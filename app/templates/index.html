@@ -29,62 +29,125 @@
         <!-- Data Search Form -->
         <div class="form-group">
             <h2>Search NFL Data</h2>
-            <label for="data_type">Data Type:</label>
-            <select id="data_type" name="data_type">
-                <option value="pbp">Play-by-Play</option>
-                <option value="weekly">Weekly Data</option>
-                <option value="seasonal">Seasonal Data</option>
-                <option value="rosters_seasonal">Seasonal Rosters</option>
-                <option value="rosters_weekly">Weekly Rosters</option>
-                <option value="draft_picks">Draft Picks</option>
-                <option value="combine">Combine Data</option>
-                <option value="ngs">Next Gen Stats</option>
-                <option value="depth_charts">Depth Charts</option>
-                <option value="injuries">Injuries</option>
-                <option value="qbr">QBR</option>
-                <option value="snap_counts">Snap Counts</option>
-                <option value="ftn_data">FTN Data</option>
+            <label for="function_name">Select Function:</label>
+            <select id="function_name" name="function_name">
+                <option value="">-- Select Function --</option>
+                <option value="import_pbp_data">Play-by-Play Data (import_pbp_data)</option>
+                <option value="import_weekly_data">Weekly Data (import_weekly_data)</option>
+                <option value="import_seasonal_data">Seasonal Data (import_seasonal_data)</option>
+                <option value="import_seasonal_rosters">Seasonal Rosters (import_seasonal_rosters)</option>
+                <option value="import_weekly_rosters">Weekly Rosters (import_weekly_rosters)</option>
+                <option value="import_ngs_data">Next Gen Stats (import_ngs_data)</option>
+                <option value="import_combine_data">Combine Data (import_combine_data)</option>
+                <option value="import_draft_picks">Draft Picks (import_draft_picks)</option>
+                <option value="import_qbr">QBR Data (import_qbr)</option>
+                <option value="import_seasonal_pfr">Seasonal PFR Stats (import_seasonal_pfr)</option>
+                <option value="import_weekly_pfr">Weekly PFR Stats (import_weekly_pfr)</option>
+                <option value="import_snap_counts">Snap Counts (import_snap_counts)</option>
+                <option value="import_ftn_data">FTN Charting Data (import_ftn_data)</option>
+                <option value="import_depth_charts">Depth Charts (import_depth_charts)</option>
+                <option value="import_injuries">Injury Reports (import_injuries)</option>
+                <option value="import_schedules">Schedules (import_schedules)</option>
+                <option value="import_officials">Officials (import_officials)</option>
+                <option value="import_win_totals">Win Totals (import_win_totals)</option>
+                <option value="import_sc_lines">Scoring Lines (import_sc_lines)</option>
+                <option value="import_draft_values">Draft Values (import_draft_values)</option>
+                <option value="import_team_desc">Team Descriptions (import_team_desc)</option>
+                <option value="import_contracts">Contracts (import_contracts)</option>
+                <option value="import_ids">Player IDs (import_ids)</option>
+                <option value="import_players">All Players Data (import_players)</option>
             </select>
 
-            <div id="pbp-options" class="options-group hidden">
-                <!-- PBP specific options can go here if any -->
+            <div id="common_params" class="options-group hidden">
+                <label for="years">Years (comma-separated):</label>
+                <input type="text" id="years" name="years" placeholder="e.g., 2022,2023">
+
+                <label for="columns_search">Columns (comma-separated, optional):</label>
+                <input type="text" id="columns_search" name="columns_search" placeholder="e.g., player_name,pass_yards">
+                <button type="button" id="fetchColumnsBtn">Fetch Available Columns for PBP/Weekly</button>
+                <div id="availableColumns" style="margin-top:10px;"></div>
             </div>
-            <div id="seasonal-options" class="options-group hidden">
-                <label for="s_type">Season Type (for Seasonal Data):</label>
-                <input type="text" id="s_type" name="s_type" value="REG">
+
+            <!-- Function-specific parameters -->
+            <div id="params_import_pbp_data" class="specific-params options-group hidden">
+                <label><input type="checkbox" name="pbp_include_participation" checked> Include Participation</label>
+                <label><input type="checkbox" name="pbp_downcast" checked> Downcast Floats</label>
+                <label><input type="checkbox" name="pbp_cache"> Use Cache</label>
+                <label for="pbp_alt_path">Alt Cache Path:</label>
+                <input type="text" name="pbp_alt_path" placeholder="Optional cache path">
+                <label><input type="checkbox" name="pbp_thread_requests"> Thread Requests</label>
             </div>
-            <div id="combine-options" class="options-group hidden">
-                <label for="positions">Positions (for Combine Data, comma-separated):</label>
-                <input type="text" id="positions" name="positions" placeholder="e.g., WR,QB">
+
+            <div id="params_import_weekly_data" class="specific-params options-group hidden">
+                <label><input type="checkbox" name="weekly_downcast" checked> Downcast Floats</label>
+                <label><input type="checkbox" name="weekly_thread_requests"> Thread Requests</label>
             </div>
-            <div id="ngs-options" class="options-group hidden">
-                <label for="stat_type_ngs">NGS Stat Type:</label>
-                <select id="stat_type_ngs" name="stat_type_ngs">
+
+            <div id="params_import_seasonal_data" class="specific-params options-group hidden">
+                <label for="seasonal_s_type">Season Type:</label>
+                <select name="seasonal_s_type">
+                    <option value="REG">REG</option>
+                    <option value="ALL">ALL</option>
+                    <option value="POST">POST</option>
+                </select>
+            </div>
+
+            <div id="params_import_combine_data" class="specific-params options-group hidden">
+                <label for="combine_positions">Positions (comma-separated):</label>
+                <input type="text" name="combine_positions" placeholder="e.g., WR,QB">
+            </div>
+
+            <div id="params_import_ngs_data" class="specific-params options-group hidden">
+                <label for="ngs_stat_type">NGS Stat Type:</label>
+                <select name="ngs_stat_type">
                     <option value="passing">Passing</option>
                     <option value="rushing">Rushing</option>
                     <option value="receiving">Receiving</option>
                 </select>
             </div>
-             <div id="qbr-options" class="options-group hidden">
+
+            <div id="params_import_qbr" class="specific-params options-group hidden">
                 <label for="qbr_level">QBR Level:</label>
-                <select id="qbr_level" name="qbr_level">
+                <select name="qbr_level">
                     <option value="nfl">NFL</option>
                     <option value="college">College</option>
                 </select>
                 <label for="qbr_frequency">QBR Frequency:</label>
-                <select id="qbr_frequency" name="qbr_frequency">
+                <select name="qbr_frequency">
                     <option value="season">Season</option>
                     <option value="weekly">Weekly</option>
                 </select>
             </div>
 
-            <label for="years">Years (comma-separated):</label>
-            <input type="text" id="years" name="years" placeholder="e.g., 2022,2023" required>
+            <div id="params_import_seasonal_pfr" class="specific-params options-group hidden">
+                <label for="pfr_seasonal_s_type">PFR Stat Type:</label>
+                <select name="pfr_seasonal_s_type">
+                    <option value="pass">Pass</option>
+                    <option value="rec">Rec</option>
+                    <option value="rush">Rush</option>
+                    <option value="def">Def</option>
+                </select>
+            </div>
 
-            <label for="columns_search">Columns (comma-separated, optional):</label>
-            <input type="text" id="columns_search" name="columns_search" placeholder="e.g., player_name,pass_yards">
-            <button type="button" id="fetchColumnsBtn">Fetch Available Columns</button>
-            <div id="availableColumns" style="margin-top:10px;"></div>
+            <div id="params_import_weekly_pfr" class="specific-params options-group hidden">
+                <label for="pfr_weekly_s_type">PFR Stat Type:</label>
+                <select name="pfr_weekly_s_type">
+                    <option value="pass">Pass</option>
+                    <option value="rec">Rec</option>
+                    <option value="rush">Rush</option>
+                    <option value="def">Def</option>
+                </select>
+            </div>
+
+            <div id="params_import_ftn_data" class="specific-params options-group hidden">
+                 <label><input type="checkbox" name="ftn_downcast" checked> Downcast Floats</label>
+                 <label><input type="checkbox" name="ftn_thread_requests"> Thread Requests</label>
+            </div>
+
+            <div id="params_import_ids" class="specific-params options-group hidden">
+                <label for="ids_ids">Player IDs to return (subset, comma-separated, optional):</label>
+                <input type="text" name="ids_ids" placeholder="e.g., 00-0033873,00-0026498">
+            </div>
 
 
             <button id="searchBtn">Search Data</button>
@@ -129,37 +192,83 @@
     </div>
 
     <script>
-        let currentData = null; // To store the current search result data
-        let currentDataColumns = [];
+        let currentData = null; // To store the current search result data (JSON string)
+        let currentDataColumns = []; // To store column names from current search
 
-        // Show/hide specific options based on data_type
-        $('#data_type').change(function() {
-            $('.options-group').addClass('hidden');
-            const selectedType = $(this).val();
-            if (selectedType === 'seasonal') {
-                $('#seasonal-options').removeClass('hidden');
-            } else if (selectedType === 'combine') {
-                $('#combine-options').removeClass('hidden');
-            } else if (selectedType === 'ngs') {
-                $('#ngs-options').removeClass('hidden');
-            } else if (selectedType === 'qbr') {
-                $('#qbr-options').removeClass('hidden');
-            }
-            // Clear available columns display when data type changes
+        // Map function names to their parameter div IDs and whether they use common params
+        const functionParamMap = {
+            'import_pbp_data': { paramsDiv: '#params_import_pbp_data', usesCommon: true, usesYears: true, usesColumns: true, fetchableColsType: 'pbp' },
+            'import_weekly_data': { paramsDiv: '#params_import_weekly_data', usesCommon: true, usesYears: true, usesColumns: true, fetchableColsType: 'weekly' },
+            'import_seasonal_data': { paramsDiv: '#params_import_seasonal_data', usesCommon: true, usesYears: true, usesColumns: false }, // Columns are mostly fixed by logic
+            'import_seasonal_rosters': { paramsDiv: null, usesCommon: true, usesYears: true, usesColumns: true },
+            'import_weekly_rosters': { paramsDiv: null, usesCommon: true, usesYears: true, usesColumns: true },
+            'import_ngs_data': { paramsDiv: '#params_import_ngs_data', usesCommon: true, usesYears: true, usesColumns: false }, // Columns fixed by stat_type
+            'import_combine_data': { paramsDiv: '#params_import_combine_data', usesCommon: true, usesYears: true, usesColumns: false }, // Columns fixed
+            'import_draft_picks': { paramsDiv: null, usesCommon: true, usesYears: true, usesColumns: false }, // Columns fixed
+            'import_qbr': { paramsDiv: '#params_import_qbr', usesCommon: true, usesYears: true, usesColumns: false }, // Columns fixed
+            'import_seasonal_pfr': { paramsDiv: '#params_import_seasonal_pfr', usesCommon: true, usesYears: true, usesColumns: false },
+            'import_weekly_pfr': { paramsDiv: '#params_import_weekly_pfr', usesCommon: true, usesYears: true, usesColumns: false },
+            'import_snap_counts': { paramsDiv: null, usesCommon: true, usesYears: true, usesColumns: false },
+            'import_ftn_data': { paramsDiv: '#params_import_ftn_data', usesCommon: true, usesYears: true, usesColumns: true },
+            'import_depth_charts': { paramsDiv: null, usesCommon: true, usesYears: true, usesColumns: false },
+            'import_injuries': { paramsDiv: null, usesCommon: true, usesYears: true, usesColumns: false },
+            'import_schedules': { paramsDiv: null, usesCommon: true, usesYears: true, usesColumns: false },
+            // Functions generally not taking 'years' or 'columns' in the same way
+            'import_officials': { paramsDiv: null, usesCommon: true, usesYears: true, usesColumns: false }, // years is optional
+            'import_win_totals': { paramsDiv: null, usesCommon: true, usesYears: true, usesColumns: false }, // years is optional
+            'import_sc_lines': { paramsDiv: null, usesCommon: true, usesYears: true, usesColumns: false }, // years is optional
+            'import_draft_values': { paramsDiv: null, usesCommon: false }, // No years/cols
+            'import_team_desc': { paramsDiv: null, usesCommon: false }, // No years/cols
+            'import_contracts': { paramsDiv: null, usesCommon: false }, // No years/cols
+            'import_ids': { paramsDiv: '#params_import_ids', usesCommon: true, usesYears: false, usesColumns: true }, // uses columns for subset, not years.
+            'import_players': { paramsDiv: null, usesCommon: false } // No years/cols
+        };
+
+        $('#function_name').change(function() {
+            const selectedFunction = $(this).val();
+            $('.options-group').addClass('hidden'); // Hide all common and specific param groups
             $('#availableColumns').html('');
+            $('#columns_search').val(''); // Clear columns input
+            $('#years').val(''); // Clear years input
+
+
+            if (selectedFunction && functionParamMap[selectedFunction]) {
+                const config = functionParamMap[selectedFunction];
+                if (config.usesCommon) {
+                    $('#common_params').removeClass('hidden');
+                    $('#years').prop('required', !!config.usesYears).closest('label').toggle(!!config.usesYears);
+                    $('#columns_search').closest('label').add('#columns_search').add('#fetchColumnsBtn').add('#availableColumns').toggle(!!config.usesColumns);
+                     $('#fetchColumnsBtn').toggle(!!config.fetchableColsType);
+                } else {
+                    // Ensure years and columns are hidden if not part of common params for this function
+                     $('#years').prop('required', false).closest('label').hide();
+                     $('#columns_search').closest('label').add('#columns_search').add('#fetchColumnsBtn').add('#availableColumns').hide();
+                }
+
+                if (config.paramsDiv) {
+                    $(config.paramsDiv).removeClass('hidden');
+                }
+            } else {
+                 $('#common_params').addClass('hidden'); // Hide common if no function selected or no config
+            }
         });
 
         $('#fetchColumnsBtn').click(function() {
-            const dataType = $('#data_type').val();
-            if (!dataType) {
-                $('#availableColumns').html('<p class="error">Please select a data type first.</p>');
+            const selectedFunction = $('#function_name').val();
+            let fetchType = '';
+            if (selectedFunction && functionParamMap[selectedFunction] && functionParamMap[selectedFunction].fetchableColsType) {
+                fetchType = functionParamMap[selectedFunction].fetchableColsType;
+            }
+
+            if (!fetchType) {
+                $('#availableColumns').html('<p class="error">Column fetching is only available for PBP and Weekly data types via this button.</p>');
                 return;
             }
             $('#availableColumns').html('<p>Loading columns...</p>');
             $.ajax({
-                url: '/get_columns',
+                url: '/get_columns', // Backend needs to handle 'fetchType' (e.g. 'pbp', 'weekly')
                 type: 'GET',
-                data: { data_type: dataType },
+                data: { data_type: fetchType }, // Changed 'data_type' to 'fetchType' for clarity if backend changes
                 success: function(response) {
                     if (response.columns && response.columns.length > 0) {
                         $('#availableColumns').html('<p><strong>Available columns:</strong> ' + response.columns.join(', ') + '</p>');
@@ -181,23 +290,34 @@
             currentData = null;
             currentDataColumns = [];
 
-            const payload = {
-                data_type: $('#data_type').val(),
-                years: $('#years').val(),
-                columns: $('#columns_search').val()
+            const selectedFunction = $('#function_name').val();
+            if (!selectedFunction) {
+                $('#searchError').text('Please select a function first.');
+                return;
+            }
+
+            let payload = {
+                function_name: selectedFunction,
+                // Common parameters that might be used by many functions
+                years: $('#years').val() || null, // Send null if empty, backend to handle
+                columns_str: $('#columns_search').val() || null,
             };
 
-            // Add type-specific parameters
-            if (payload.data_type === 'seasonal') {
-                payload.s_type = $('#s_type').val();
-            } else if (payload.data_type === 'combine') {
-                payload.positions = $('#positions').val();
-            } else if (payload.data_type === 'ngs') {
-                payload.stat_type_ngs = $('#stat_type_ngs').val();
-            } else if (payload.data_type === 'qbr') {
-                payload.qbr_level = $('#qbr_level').val();
-                payload.qbr_frequency = $('#qbr_frequency').val();
+            // Add function-specific parameters from the visible form
+            const config = functionParamMap[selectedFunction];
+            if (config && config.paramsDiv) {
+                $(`${config.paramsDiv} input, ${config.paramsDiv} select`).each(function() {
+                    const input = $(this);
+                    if (input.attr('type') === 'checkbox') {
+                        payload[input.attr('name')] = input.is(':checked');
+                    } else {
+                        payload[input.attr('name')] = input.val();
+                    }
+                });
             }
+             // Override years and columns if the function is not configured to use them from common_params
+            if (config && !config.usesYears) payload.years = null;
+            if (config && !config.usesColumns) payload.columns_str = null;
 
 
             $.ajax({
@@ -206,10 +326,12 @@
                 data: payload,
                 success: function(response) {
                     if (response.data) {
-                        currentData = response.data; // Store raw JSON string from server
+                        // response.data is already a JSON string from df.to_json(orient='split')
+                        currentData = response.data;
                         currentDataColumns = response.columns || [];
 
-                        const df = JSON.parse(response.data); //This is for table display, raw data is passed to viz
+                        // For table display, parse the JSON string into an object
+                        const dfObject = JSON.parse(currentData);
 
                         // Populate table
                         const tableHead = $('#dataTable thead');
@@ -217,15 +339,16 @@
                         tableHead.empty();
                         tableBody.empty();
 
-                        if (df.columns && df.data.length > 0) {
+                        // dfObject has 'columns' and 'data' (array of arrays)
+                        if (dfObject.columns && dfObject.data && dfObject.data.length > 0) {
                             let headerRow = '<tr>';
-                            df.columns.forEach(col => headerRow += '<th>' + col + '</th>');
+                            dfObject.columns.forEach(col => headerRow += '<th>' + col + '</th>');
                             headerRow += '</tr>';
                             tableHead.append(headerRow);
 
-                            df.data.forEach(rowData => {
+                            dfObject.data.forEach(rowData => {
                                 let row = '<tr>';
-                                rowData.forEach(cell => row += '<td>' + cell + '</td>');
+                                rowData.forEach(cell => row += '<td>' + (cell !== null ? cell : '') + '</td>'); // Handle nulls
                                 row += '</tr>';
                                 tableBody.append(row);
                             });
@@ -254,13 +377,13 @@
             $('#vizError').text('');
             $('#plotDiv').empty();
 
-            if (!currentData) {
+            if (!currentData) { // currentData stores the JSON string from the server
                 $('#vizError').text('No data available to visualize. Please perform a search first.');
                 return;
             }
 
             const vizPayload = {
-                data_json: currentData, // Send the raw JSON string
+                data_json_str: currentData, // Send the raw JSON string (already in 'split' format)
                 viz_type: $('#viz_type').val(),
                 x_axis: $('#x_axis').val(),
                 y_axis: $('#y_axis').val(),
@@ -301,7 +424,7 @@
         }
 
         // Trigger change on page load to set initial visibility of options
-        $('#data_type').trigger('change');
+        $('#function_name').trigger('change');
     </script>
 </body>
 </html>
