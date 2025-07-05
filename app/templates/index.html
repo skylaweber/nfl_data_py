@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>NFL Data Visualizer</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f4; color: #333; }
+        .container { background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h1, h2 { color: #555; }
+        label { display: block; margin-top: 10px; font-weight: bold; }
+        input[type="text"], select { width: calc(100% - 22px); padding: 10px; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        button { background-color: #007bff; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; margin-top: 20px; }
+        button:hover { background-color: #0056b3; }
+        #dataTable { margin-top: 20px; width: 100%; border-collapse: collapse; }
+        #dataTable th, #dataTable td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        #dataTable th { background-color: #f0f0f0; }
+        #plotDiv { margin-top: 30px; }
+        .error { color: red; margin-top: 10px; }
+        .form-group { margin-bottom: 15px; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>NFL Data Search and Visualization</h1>
+
+        <!-- Data Search Form -->
+        <div class="form-group">
+            <h2>Search NFL Data</h2>
+            <label for="data_type">Data Type:</label>
+            <select id="data_type" name="data_type">
+                <option value="pbp">Play-by-Play</option>
+                <option value="weekly">Weekly Data</option>
+                <option value="seasonal">Seasonal Data</option>
+                <option value="rosters_seasonal">Seasonal Rosters</option>
+                <option value="rosters_weekly">Weekly Rosters</option>
+                <option value="draft_picks">Draft Picks</option>
+                <option value="combine">Combine Data</option>
+                <option value="ngs">Next Gen Stats</option>
+                <option value="depth_charts">Depth Charts</option>
+                <option value="injuries">Injuries</option>
+                <option value="qbr">QBR</option>
+                <option value="snap_counts">Snap Counts</option>
+                <option value="ftn_data">FTN Data</option>
+            </select>
+
+            <div id="pbp-options" class="options-group hidden">
+                <!-- PBP specific options can go here if any -->
+            </div>
+            <div id="seasonal-options" class="options-group hidden">
+                <label for="s_type">Season Type (for Seasonal Data):</label>
+                <input type="text" id="s_type" name="s_type" value="REG">
+            </div>
+            <div id="combine-options" class="options-group hidden">
+                <label for="positions">Positions (for Combine Data, comma-separated):</label>
+                <input type="text" id="positions" name="positions" placeholder="e.g., WR,QB">
+            </div>
+            <div id="ngs-options" class="options-group hidden">
+                <label for="stat_type_ngs">NGS Stat Type:</label>
+                <select id="stat_type_ngs" name="stat_type_ngs">
+                    <option value="passing">Passing</option>
+                    <option value="rushing">Rushing</option>
+                    <option value="receiving">Receiving</option>
+                </select>
+            </div>
+             <div id="qbr-options" class="options-group hidden">
+                <label for="qbr_level">QBR Level:</label>
+                <select id="qbr_level" name="qbr_level">
+                    <option value="nfl">NFL</option>
+                    <option value="college">College</option>
+                </select>
+                <label for="qbr_frequency">QBR Frequency:</label>
+                <select id="qbr_frequency" name="qbr_frequency">
+                    <option value="season">Season</option>
+                    <option value="weekly">Weekly</option>
+                </select>
+            </div>
+
+            <label for="years">Years (comma-separated):</label>
+            <input type="text" id="years" name="years" placeholder="e.g., 2022,2023" required>
+
+            <label for="columns_search">Columns (comma-separated, optional):</label>
+            <input type="text" id="columns_search" name="columns_search" placeholder="e.g., player_name,pass_yards">
+            <button type="button" id="fetchColumnsBtn">Fetch Available Columns</button>
+            <div id="availableColumns" style="margin-top:10px;"></div>
+
+
+            <button id="searchBtn">Search Data</button>
+        </div>
+        <div id="searchError" class="error"></div>
+
+        <div id="dataDisplay" class="hidden">
+            <h2>Search Results</h2>
+            <div style="max-height: 400px; overflow-y: auto;">
+                <table id="dataTable">
+                    <thead></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Data Visualization Form -->
+        <div id="visualizationForm" class="form-group hidden">
+            <h2>Create Visualization</h2>
+            <label for="viz_type">Visualization Type:</label>
+            <select id="viz_type" name="viz_type">
+                <option value="scatter">Scatter Plot</option>
+                <option value="line">Line Plot</option>
+                <option value="bar">Bar Chart</option>
+                <option value="histogram">Histogram</option>
+                <option value="box">Box Plot</option>
+            </select>
+
+            <label for="x_axis">X-Axis:</label>
+            <select id="x_axis" name="x_axis"></select>
+
+            <label for="y_axis">Y-Axis:</label>
+            <select id="y_axis" name="y_axis"></select>
+
+            <label for="color_by">Color By (Optional):</label>
+            <select id="color_by" name="color_by"><option value="">None</option></select>
+
+            <button id="visualizeBtn">Generate Visualization</button>
+        </div>
+        <div id="vizError" class="error"></div>
+        <div id="plotDiv"></div>
+    </div>
+
+    <script>
+        let currentData = null; // To store the current search result data
+        let currentDataColumns = [];
+
+        // Show/hide specific options based on data_type
+        $('#data_type').change(function() {
+            $('.options-group').addClass('hidden');
+            const selectedType = $(this).val();
+            if (selectedType === 'seasonal') {
+                $('#seasonal-options').removeClass('hidden');
+            } else if (selectedType === 'combine') {
+                $('#combine-options').removeClass('hidden');
+            } else if (selectedType === 'ngs') {
+                $('#ngs-options').removeClass('hidden');
+            } else if (selectedType === 'qbr') {
+                $('#qbr-options').removeClass('hidden');
+            }
+            // Clear available columns display when data type changes
+            $('#availableColumns').html('');
+        });
+
+        $('#fetchColumnsBtn').click(function() {
+            const dataType = $('#data_type').val();
+            if (!dataType) {
+                $('#availableColumns').html('<p class="error">Please select a data type first.</p>');
+                return;
+            }
+            $('#availableColumns').html('<p>Loading columns...</p>');
+            $.ajax({
+                url: '/get_columns',
+                type: 'GET',
+                data: { data_type: dataType },
+                success: function(response) {
+                    if (response.columns && response.columns.length > 0) {
+                        $('#availableColumns').html('<p><strong>Available columns:</strong> ' + response.columns.join(', ') + '</p>');
+                    } else {
+                        $('#availableColumns').html('<p>No specific columns listed for this type, or unable to fetch. You can still try inputting columns manually.</p>');
+                    }
+                },
+                error: function(xhr) {
+                    $('#availableColumns').html('<p class="error">Error fetching columns: ' + (xhr.responseJSON ? xhr.responseJSON.error : xhr.statusText) + '</p>');
+                }
+            });
+        });
+
+        $('#searchBtn').click(function() {
+            $('#searchError').text('');
+            $('#dataDisplay').addClass('hidden');
+            $('#visualizationForm').addClass('hidden');
+            $('#plotDiv').empty();
+            currentData = null;
+            currentDataColumns = [];
+
+            const payload = {
+                data_type: $('#data_type').val(),
+                years: $('#years').val(),
+                columns: $('#columns_search').val()
+            };
+
+            // Add type-specific parameters
+            if (payload.data_type === 'seasonal') {
+                payload.s_type = $('#s_type').val();
+            } else if (payload.data_type === 'combine') {
+                payload.positions = $('#positions').val();
+            } else if (payload.data_type === 'ngs') {
+                payload.stat_type_ngs = $('#stat_type_ngs').val();
+            } else if (payload.data_type === 'qbr') {
+                payload.qbr_level = $('#qbr_level').val();
+                payload.qbr_frequency = $('#qbr_frequency').val();
+            }
+
+
+            $.ajax({
+                url: '/search',
+                type: 'POST',
+                data: payload,
+                success: function(response) {
+                    if (response.data) {
+                        currentData = response.data; // Store raw JSON string from server
+                        currentDataColumns = response.columns || [];
+
+                        const df = JSON.parse(response.data); //This is for table display, raw data is passed to viz
+
+                        // Populate table
+                        const tableHead = $('#dataTable thead');
+                        const tableBody = $('#dataTable tbody');
+                        tableHead.empty();
+                        tableBody.empty();
+
+                        if (df.columns && df.data.length > 0) {
+                            let headerRow = '<tr>';
+                            df.columns.forEach(col => headerRow += '<th>' + col + '</th>');
+                            headerRow += '</tr>';
+                            tableHead.append(headerRow);
+
+                            df.data.forEach(rowData => {
+                                let row = '<tr>';
+                                rowData.forEach(cell => row += '<td>' + cell + '</td>');
+                                row += '</tr>';
+                                tableBody.append(row);
+                            });
+                            $('#dataDisplay').removeClass('hidden');
+
+                            // Populate visualization dropdowns
+                            populateSelectWithOptions('#x_axis', currentDataColumns);
+                            populateSelectWithOptions('#y_axis', currentDataColumns);
+                            populateSelectWithOptions('#color_by', currentDataColumns, true); // true for optional
+                            $('#visualizationForm').removeClass('hidden');
+                        } else {
+                             $('#searchError').text('No data returned or data is empty.');
+                        }
+                    } else if (response.error) {
+                        $('#searchError').text('Error: ' + response.error);
+                    }
+                },
+                error: function(xhr) {
+                    const errorMsg = xhr.responseJSON ? xhr.responseJSON.error : xhr.statusText;
+                    $('#searchError').text('Search failed: ' + errorMsg);
+                }
+            });
+        });
+
+        $('#visualizeBtn').click(function() {
+            $('#vizError').text('');
+            $('#plotDiv').empty();
+
+            if (!currentData) {
+                $('#vizError').text('No data available to visualize. Please perform a search first.');
+                return;
+            }
+
+            const vizPayload = {
+                data_json: currentData, // Send the raw JSON string
+                viz_type: $('#viz_type').val(),
+                x_axis: $('#x_axis').val(),
+                y_axis: $('#y_axis').val(),
+                color_by: $('#color_by').val()
+            };
+
+            $.ajax({
+                url: '/visualize',
+                type: 'POST',
+                data: vizPayload,
+                success: function(response) {
+                    if (response.graph_json) {
+                        const graphData = JSON.parse(response.graph_json);
+                        Plotly.newPlot('plotDiv', graphData.data, graphData.layout);
+                    } else if (response.error) {
+                        $('#vizError').text('Error: ' + response.error);
+                    }
+                },
+                error: function(xhr) {
+                     const errorMsg = xhr.responseJSON ? xhr.responseJSON.error : xhr.statusText;
+                    $('#vizError').text('Visualization failed: ' + errorMsg);
+                }
+            });
+        });
+
+        function populateSelectWithOptions(selectId, optionsArray, includeEmptyOption = false) {
+            const selectElement = $(selectId);
+            selectElement.empty();
+            if (includeEmptyOption) {
+                selectElement.append($('<option>', { value: '', text: 'None' }));
+            }
+            optionsArray.forEach(option => {
+                selectElement.append($('<option>', {
+                    value: option,
+                    text: option
+                }));
+            });
+        }
+
+        // Trigger change on page load to set initial visibility of options
+        $('#data_type').trigger('change');
+    </script>
+</body>
+</html>
