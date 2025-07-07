@@ -28,15 +28,22 @@ This guide is optimized for setting up and running the application within a GitH
    ```
    Your terminal prompt should now start with `(.venv)`.
 
-**3. Install Python Dependencies:**
+**3. Install Python Dependencies (Attempting Pandas 2.x):**
 
-   With your virtual environment active, install the required packages:
+   With your virtual environment active, install the required packages in two steps:
+
+   **Step 3a: Install `pandas` (version 2.0 or newer) along with Flask and Plotly.**
    ```bash
-   pip install pandas Flask plotly nfl_data_py
+   pip install "pandas>=2.0" Flask plotly
    ```
-   This command attempts to install the latest versions of these packages.
 
-   *(For troubleshooting potential `nfl_data_py` dependency issues, please see `WARNINGS.md`)*
+   **Step 3b: Install `nfl_data_py`.**
+   ```bash
+   pip install nfl_data_py
+   ```
+   This attempts to make `nfl_data_py` use the already installed newer version of `pandas`.
+
+   *(For crucial information on `nfl_data_py`'s official `pandas` dependency and troubleshooting if issues arise, PLEASE SEE `WARNINGS.md`)*
 
 **4. Running the Application:**
 
