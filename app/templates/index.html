@@ -62,25 +62,25 @@
                 <label for="years">Years (comma-separated):</label>
                 <input type="text" id="years" name="years" placeholder="e.g., 2022,2023">
 
-                <label for="columns_search">Columns (comma-separated, optional):</label>
-                <input type="text" id="columns_search" name="columns_search" placeholder="e.g., player_name,pass_yards">
-                <button type="button" id="fetchColumnsBtn">Fetch Available Columns for PBP/Weekly</button>
+                <label for="columns_search" id="columns_search_label">Columns (comma-separated, optional):</label>
+                <input type="text" id="columns_search" name="columns_search" placeholder="e.g., player_name,pass_yards. See nflverse docs for options.">
+                <button type="button" id="fetchColumnsBtn" title="Fetches common columns for Play-by-Play or Weekly data types.">Fetch Columns (PBP/Weekly only)</button>
                 <div id="availableColumns" style="margin-top:10px;"></div>
             </div>
 
             <!-- Function-specific parameters -->
             <div id="params_import_pbp_data" class="specific-params options-group hidden">
-                <label><input type="checkbox" name="pbp_include_participation" checked> Include Participation</label>
-                <label><input type="checkbox" name="pbp_downcast" checked> Downcast Floats</label>
-                <label><input type="checkbox" name="pbp_cache"> Use Cache</label>
+                <label title="Include player participation data with PBP."><input type="checkbox" name="pbp_include_participation" checked> Include Participation</label>
+                <label title="Convert large float numbers to smaller type to save memory. May slightly reduce precision and slow initial load."><input type="checkbox" name="pbp_downcast" checked> Downcast Floats</label>
+                <label title="Use locally cached PBP data if available (see nfl_data_py docs for cache_pbp function)."><input type="checkbox" name="pbp_cache"> Use Cache</label>
                 <label for="pbp_alt_path">Alt Cache Path:</label>
-                <input type="text" name="pbp_alt_path" placeholder="Optional cache path">
-                <label><input type="checkbox" name="pbp_thread_requests"> Thread Requests</label>
+                <input type="text" name="pbp_alt_path" placeholder="Optional path if using local cache" title="Specify alternative path for PBP cache.">
+                <label title="Download data for multiple years concurrently. Faster for good connections."><input type="checkbox" name="pbp_thread_requests"> Thread Requests</label>
             </div>
 
             <div id="params_import_weekly_data" class="specific-params options-group hidden">
-                <label><input type="checkbox" name="weekly_downcast" checked> Downcast Floats</label>
-                <label><input type="checkbox" name="weekly_thread_requests"> Thread Requests</label>
+                <label title="Convert large float numbers to smaller type to save memory. May slightly reduce precision and slow initial load."><input type="checkbox" name="weekly_downcast" checked> Downcast Floats</label>
+                <label title="Download data for multiple years concurrently. Faster for good connections."><input type="checkbox" name="weekly_thread_requests"> Thread Requests</label>
             </div>
 
             <div id="params_import_seasonal_data" class="specific-params options-group hidden">
@@ -140,8 +140,8 @@
             </div>
 
             <div id="params_import_ftn_data" class="specific-params options-group hidden">
-                 <label><input type="checkbox" name="ftn_downcast" checked> Downcast Floats</label>
-                 <label><input type="checkbox" name="ftn_thread_requests"> Thread Requests</label>
+                 <label title="Convert large float numbers to smaller type to save memory. May slightly reduce precision and slow initial load."><input type="checkbox" name="ftn_downcast" checked> Downcast Floats</label>
+                 <label title="Download data for multiple years concurrently. Faster for good connections."><input type="checkbox" name="ftn_thread_requests"> Thread Requests</label>
             </div>
 
             <div id="params_import_ids" class="specific-params options-group hidden">

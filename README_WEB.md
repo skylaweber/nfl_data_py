@@ -8,14 +8,15 @@ This web application provides a user-friendly interface to search, view, and vis
     *   Select the specific `nfl_data_py` function to call (e.g., `import_pbp_data`, `import_seasonal_data`, `import_ngs_data`).
     *   Dynamically displays relevant input fields based on the selected function, including:
         *   Years (comma-separated list).
-        *   Columns to retrieve (comma-separated list, optional for many functions).
-        *   Function-specific parameters (e.g., `s_type` for seasonal data, `stat_type` for NGS, boolean flags for PBP data like `include_participation`, `cache`, etc.).
+        *   Columns to retrieve (comma-separated list, optional for many functions). The placeholder suggests consulting `nflverse` documentation for available column names when a direct fetch isn't available.
+        *   Function-specific parameters (e.g., `s_type` for seasonal data, `stat_type` for NGS).
+        *   Boolean flags (e.g., `include_participation`, `cache`, `downcast`, `thread_requests`) with tooltips explaining their purpose.
 -   **Tabular Data Display:** View search results in a scrollable table.
 -   **Data Visualization:**
     *   Generate various types of plots (Scatter, Line, Bar, Histogram, Box Plot) from the search results.
     *   Customize plots by selecting X and Y axes, and an optional grouping variable for colors from the currently loaded data.
 -   **Dynamic UI:** The interface dynamically updates parameter forms based on the selected `nfl_data_py` function.
--   **Column Helper:** "Fetch Available Columns" button for Play-by-Play and Weekly data types to guide column selection.
+-   **Column Helper:** "Fetch Columns (PBP/Weekly only)" button for Play-by-Play and Weekly data types to guide column selection, with its limited scope clearly indicated.
 
 ## Setup and Installation (for GitHub Codespaces)
 
@@ -72,8 +73,10 @@ This guide is optimized for setting up and running the application within a GitH
 2.  **Fill Parameters:**
     *   The form will dynamically update to show parameters relevant to your selected function.
     *   **Years:** If applicable, provide a comma-separated list of years (e.g., `2022,2023`).
-    *   **Columns:** If applicable, provide a comma-separated list of columns. For PBP and Weekly data, you can use the "Fetch Available Columns" button as a helper.
-    *   **Function-Specific Parameters:** Fill in any other displayed fields (e.g., dropdowns for season type, stat type; checkboxes for boolean options like "Downcast Floats" or "Include Participation").
+    *   **Columns:** If applicable, provide a comma-separated list of columns.
+        *   For Play-by-Play and Weekly data, you can use the "Fetch Columns (PBP/Weekly only)" button as a helper.
+        *   For other data types, consult the `nflverse` documentation for available column names, as indicated by the input field's placeholder text.
+    *   **Function-Specific Parameters:** Fill in any other displayed fields (e.g., dropdowns for season type, stat type). Hover over labels for options like "Downcast Floats" or "Include Participation" for a tooltip explaining their purpose.
 3.  **Search Data:** Click the "Search Data" button.
     *   Results will be displayed in a table below the search form.
     *   If there's an error (e.g., no data found, invalid input, missing required parameter), an error message will appear.
