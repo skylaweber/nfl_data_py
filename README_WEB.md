@@ -4,22 +4,20 @@ This web application provides a user-friendly interface to search, view, and vis
 
 ## Features
 
--   **Comprehensive Data Searching:**
-    *   Select the specific `nfl_data_py` function to call.
-    *   Dynamically displays relevant input fields for selected function (Years, Columns, specific options with tooltips).
+-   **Comprehensive Data Searching:** Select the specific `nfl_data_py` function to call. Dynamically displays relevant input fields for the selected function (Years, Columns, specific options with tooltips).
 -   **Tabular Data Display:** View search results in a scrollable table with row/column info.
 -   **Data Visualization:** Generate plots (Scatter, Line, Bar, Histogram, Box Plot).
 -   **Dynamic UI & Column Helper:** Dynamically updates forms; "Fetch Columns (PBP/Weekly only)" button.
 
 ## Setup and Installation (for GitHub Codespaces)
 
-This guide is optimized for setting up and running the application within a GitHub Codespace.
+This project uses a version of `nfl_data_py` (included in this repository) that has been configured to work with `pandas 2.0` or newer.
 
 **1. Open in Codespaces:**
 
-   Open this repository in a GitHub Codespace.
+   Open this repository in a GitHub Codespace. This is the recommended environment.
 
-**2. Create and Activate a Python Virtual Environment (Recommended):**
+**2. Create and Activate a Python Virtual Environment:**
 
    Open a terminal in your Codespace.
    ```bash
@@ -28,22 +26,16 @@ This guide is optimized for setting up and running the application within a GitH
    ```
    Your terminal prompt should now start with `(.venv)`.
 
-**3. Install Python Dependencies (Attempting Pandas 2.x):**
+**3. Install Dependencies:**
 
-   With your virtual environment active, install the required packages in two steps:
-
-   **Step 3a: Install `pandas` (version 2.0 or newer) along with Flask and Plotly.**
+   With your virtual environment active, install the project and its dependencies. This command installs the `nfl_data_py` package from the local repository files (which now specifies modern `pandas`) and other necessary libraries for the web app.
    ```bash
-   pip install "pandas>=2.0" Flask plotly
+   pip install -e .
+   pip install Flask plotly
+   # pandas and numpy will be installed as dependencies of the local nfl_data_py
+   # If you want to ensure the absolute latest pandas 2.x or 3.x:
+   # pip install "pandas>=2.0"
    ```
-
-   **Step 3b: Install `nfl_data_py`.**
-   ```bash
-   pip install nfl_data_py
-   ```
-   This attempts to make `nfl_data_py` use the already installed newer version of `pandas`.
-
-   *(For crucial information on `nfl_data_py`'s official `pandas` dependency and troubleshooting if issues arise, PLEASE SEE `WARNINGS.md`)*
 
 **4. Running the Application:**
 
@@ -51,7 +43,7 @@ This guide is optimized for setting up and running the application within a GitH
    ```bash
    python run.py
    ```
-   GitHub Codespaces should automatically detect the running application (default port 5000) and offer to open it in a browser via the "Ports" tab or a notification.
+   Access the application via the URL provided by Codespaces in the "Ports" tab (usually for port 5000).
 
 ## Using the Interface
 
@@ -64,5 +56,12 @@ This guide is optimized for setting up and running the application within a GitH
 
 -   `run.py`: Main Flask script.
 -   `app/`: Flask application package.
+-   `nfl_data_py/`: The nfl_data_py library (modified for pandas>=2.0).
+-   `pyproject.toml`: Defines dependencies for `nfl_data_py`, including the modified pandas requirement.
 -   `README_WEB.md`: This file.
--   `WARNINGS.md`: Important notes on dependencies and troubleshooting.
+
+## A Note on `nfl_data_py` and `pandas` Versioning
+
+The `nfl_data_py` library as published on PyPI (e.g., v0.3.3) officially requires `pandas < 2.0`. The `pyproject.toml` file in *this* repository has been modified to specify `pandas >= 2.0`. This allows the web application to use a modern version of `pandas`.
+
+**Potential Risk:** While this change enables the use of newer `pandas`, there's a possibility that some internal functions of `nfl_data_py` (v0.3.3 code) might have incompatibilities with `pandas 2.x` or newer, as it wasn't originally designed or tested for them. If you encounter errors specifically from within `nfl_data_py` functions, this version mismatch could be a factor. For maximum stability with the official `nfl_data_py` code, using `pandas 1.5.x` (which often requires compiling from source and thus needs build tools like `build-essential` and `python3-dev` on Linux) would be necessary. This project prioritizes using a newer `pandas` as requested.
