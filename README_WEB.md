@@ -17,32 +17,54 @@ This web application provides a user-friendly interface to search, view, and vis
 -   **Dynamic UI:** The interface dynamically updates parameter forms based on the selected `nfl_data_py` function.
 -   **Column Helper:** "Fetch Available Columns" button for Play-by-Play and Weekly data types to guide column selection.
 
-## How to Run
+## Setup and Installation (for GitHub Codespaces)
 
-1.  **Prerequisites:**
-    *   Python 3.x (Ensure your Python version is compatible with `pandas < 2.0` if using `nfl_data_py` version 0.3.3 or similar, or that you have a compatible environment if `nfl_data_py`'s dependencies change).
-    *   pip (Python package installer).
+This guide is optimized for setting up and running the application within a GitHub Codespace.
 
-2.  **Installation:**
-    *   Clone this repository.
-    *   It's highly recommended to use a virtual environment:
-        ```bash
-        python3 -m venv nfl_viz_env
-        source nfl_viz_env/bin/activate  # On Windows: nfl_viz_env\Scripts\activate
-        ```
-    *   Install the required Python packages:
-        ```bash
-        pip install Flask pandas plotly nfl_data_py
-        ```
-        **Note on pandas version:** `nfl_data_py` version 0.3.3 (and potentially others around this version) requires `pandas < 2.0`. If `pip` tries to build `pandas` from source and hangs, you may need to ensure your environment has build tools (`sudo apt-get install build-essential python3-dev` on Debian/Ubuntu) or use a Python version for which pre-built `pandas 1.5.x` wheels are available.
+**1. Open in Codespaces:**
 
-3.  **Running the Application:**
-    *   Navigate to the root directory of this project (where `run.py` is located).
-    *   Execute the following command in your terminal:
-        ```bash
-        python run.py
-        ```
-    *   Open your web browser and go to `http://127.0.0.1:5000/`.
+   If you haven't already, open this repository in a GitHub Codespace. This will provide you with a cloud-based development environment.
+
+**2. Create and Activate a Python Virtual Environment (Recommended):**
+
+   Open a terminal in your Codespace (usually available at the bottom of the VS Code interface).
+   It's good practice to use a virtual environment to keep dependencies isolated:
+
+   ```bash
+   python3 -m venv .venv  # Creates a virtual environment named .venv
+   source .venv/bin/activate   # Activates the virtual environment
+   ```
+   You should see `(.venv)` at the beginning of your terminal prompt.
+
+**3. Install Python Dependencies (with pandas build fix):**
+
+   The `nfl_data_py` library (version 0.3.3) requires an older version of `pandas` (`<2.0`). When `pip` installs this, it might try to build `pandas` from source, which can be slow or fail if build tools are missing.
+
+   To ensure a smooth installation in Codespaces:
+
+   *   **First, ensure build tools are present:**
+       ```bash
+       sudo apt-get update
+       sudo apt-get install -y build-essential python3-dev
+       ```
+       This command ensures your Codespace environment has the necessary C compilers and Python development headers to build packages like older versions of `pandas` if needed.
+
+   *   **Then, install the required packages:**
+       ```bash
+       pip install Flask pandas plotly nfl_data_py
+       ```
+       This command will install Flask, Plotly, and `nfl_data_py`. Because `nfl_data_py` requires `pandas<2.0`, `pip` will fetch a compatible version (likely `pandas 1.5.3`). With the build tools installed, this compilation step (if it occurs) should now succeed. It might still take a few minutes for `pandas` to compile if a pre-built wheel isn't used by pip for your specific Python version in Codespaces.
+
+**4. Running the Application:**
+
+   Once all dependencies are installed successfully (after the `pip install` command completes without errors):
+
+   ```bash
+   python run.py
+   ```
+   GitHub Codespaces should automatically detect that an application is running on a port (default for Flask is 5000) and provide a pop-up or a notification in the "Ports" tab allowing you to open the application in a browser.
+
+   If you don't see an automatic prompt, you can manually check the "Ports" tab in VS Code (usually on the bottom panel, or type "Ports" in the command palette). Find the entry for port 5000, and click the "Open in Browser" (globe) icon. This will open `http://127.0.0.1:5000/` (or a proxied URL) in a new tab.
 
 ## Using the Interface
 
@@ -72,9 +94,9 @@ This web application provides a user-friendly interface to search, view, and vis
 -   `nfl_data_py/`: The `nfl_data_py` library itself (if included directly in the repo).
 -   `README_WEB.md`: This file.
 
-## Deployment
+## Deployment (General Notes)
 
-This application uses the Flask development server, not suitable for production. For deployment, use a production WSGI server (e.g., Gunicorn, uWSGI) behind a reverse proxy (e.g., Nginx).
+This application uses the Flask development server, not suitable for production. For deployment outside of Codespaces, use a production WSGI server (e.g., Gunicorn, uWSGI) behind a reverse proxy (e.g., Nginx).
 
 Example with Gunicorn:
 ```bash
