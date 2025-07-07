@@ -178,6 +178,53 @@
             </div>
         </div>
 
+        <!-- Data Filtering and Processing Section -->
+        <div id="filterProcessSection" class="form-group hidden">
+            <h2>Filter & Process Data</h2>
+            <div id="filterBuilder">
+                <h4>Filters:</h4>
+                <div id="activeFilters" style="margin-bottom:10px;">
+                    <!-- Active filters will be displayed here -->
+                </div>
+                <select id="filterColumn"></select>
+                <select id="filterOperator">
+                    <!-- Operators will be populated by JS based on column type -->
+                </select>
+                <input type="text" id="filterValue" placeholder="Value">
+                <button type="button" id="addFilterBtn">Add Filter</button>
+            </div>
+
+            <div id="aggregationBuilder" style="margin-top:20px;">
+                <h4>Aggregation (Optional):</h4>
+                <label for="groupByCols">Group By (comma-separated columns):</label>
+                <input type="text" id="groupByCols" name="groupByCols" placeholder="e.g., team,season">
+
+                <label for="aggFunc">Aggregation Function:</label>
+                <select id="aggFunc" name="aggFunc">
+                    <option value="">None</option>
+                    <option value="sum">Sum</option>
+                    <option value="mean">Mean</option>
+                    <option value="count">Count</option>
+                    <option value="min">Min</option>
+                    <option value="max">Max</option>
+                    <option value="std">Std Dev</option>
+                </select>
+
+                <label for="aggCols">Aggregate Columns (comma-separated, for sum/mean etc.):</label>
+                <input type="text" id="aggCols" name="aggCols" placeholder="e.g., yards,tds (numeric only)">
+            </div>
+
+            <div id="columnReSelector" style="margin-top:20px;">
+                <h4>Display Columns (Optional):</h4>
+                <label for="finalColumns">Select columns to display (comma-separated, default all):</label>
+                <input type="text" id="finalColumns" name="finalColumns" placeholder="e.g., player_name,team,yards">
+            </div>
+
+            <button type="button" id="processDataBtn">Apply Filters/Processing</button>
+        </div>
+        <div id="processError" class="error"></div>
+
+
         <!-- Data Visualization Form -->
         <div id="visualizationForm" class="form-group hidden">
             <h2>Create Visualization</h2>
@@ -206,8 +253,11 @@
     </div>
 
     <script>
-        let currentData = null; // To store the current search result data (JSON string from df.to_json(orient='split'))
-        let currentDataColumns = []; // To store column names from current search
+        let initialFetchedDataJson = null; // Stores raw JSON string from initial /search
+        let currentlyDisplayedDataJson = null; // Stores raw JSON string of data currently in table (can be initial or processed)
+        let currentlyDisplayedColumns = []; // Columns of the data currently in table/viz dropdowns
+
+        let activeFiltersList = []; // Array to hold filter objects {column, operator, value}
 
         // Map function names to their parameter div IDs and configuration
         const functionParamMap = {
@@ -303,12 +353,17 @@
 
         $('#searchBtn').click(function() {
             $('#searchError').text('');
+            $('#processError').text('');
             $('#dataDisplay').addClass('hidden');
             $('#visualizationForm').addClass('hidden');
+            $('#filterProcessSection').addClass('hidden'); // Hide filter section on new search
             $('#plotDiv').empty();
             $('#dataInfo').text('');
-            currentData = null;
-            currentDataColumns = [];
+            initialFetchedDataJson = null;
+            currentlyDisplayedDataJson = null;
+            currentlyDisplayedColumns = [];
+            activeFiltersList = []; // Reset filters
+            renderActiveFilters(); // Update UI for filters
 
             const selectedFunction = $('#function_name').val();
             if (!selectedFunction) {
@@ -357,12 +412,14 @@
                 success: function(response) {
                     if (response.error) {
                         $('#searchError').text('Error: ' + response.error);
+                        $('#filterProcessSection').addClass('hidden'); // Ensure it's hidden on error
                         return;
                     }
                     if (response.data) {
-                        currentData = response.data;
-                        currentDataColumns = response.columns || [];
-                        const dfObject = JSON.parse(currentData);
+                        initialFetchedDataJson = response.data;
+                        currentlyDisplayedDataJson = response.data; // Initially, displayed data is the fetched data
+                        currentlyDisplayedColumns = response.columns || [];
+                        const dfObject = JSON.parse(currentlyDisplayedDataJson);
 
                         const tableHead = $('#dataTable thead');
                         const tableBody = $('#dataTable tbody');
@@ -387,34 +444,188 @@
                                 tableBody.append('<tr><td colspan="' + dfObject.columns.length + '">No data rows returned for these parameters.</td></tr>');
                             }
                             $('#dataDisplay').removeClass('hidden');
-                            populateSelectWithOptions('#x_axis', currentDataColumns);
-                            populateSelectWithOptions('#y_axis', currentDataColumns);
-                            populateSelectWithOptions('#color_by', currentDataColumns, true);
-                            $('#visualizationForm').removeClass('hidden');
+                            // Populate filter column dropdown, then viz dropdowns
+                            populateSelectWithOptions('#filterColumn', currentlyDisplayedColumns, false, "Select column to filter");
+                            updateFilterOperators(); // Set initial operators for the first column
+
+                            populateSelectWithOptions('#x_axis', currentlyDisplayedColumns);
+                            populateSelectWithOptions('#y_axis', currentlyDisplayedColumns);
+                            populateSelectWithOptions('#color_by', currentlyDisplayedColumns, true); // true for includeEmptyOption
+
+                            $('#filterProcessSection').removeClass('hidden'); // Show filter/process section
+                            $('#visualizationForm').removeClass('hidden'); // Show visualization form
                         } else {
                              $('#searchError').text('Search returned no data or columns.');
                              $('#dataInfo').text('Search returned no data or columns.');
                              $('#dataDisplay').removeClass('hidden');
+                             $('#filterProcessSection').addClass('hidden'); // Hide if no data/columns
                         }
                     }
                 },
                 error: function(xhr) {
                      const errorMsg = xhr.responseJSON ? xhr.responseJSON.error : xhr.statusText;
                     $('#searchError').text('Search failed: ' + errorMsg);
+                    $('#filterProcessSection').addClass('hidden');
                 }
             });
         });
 
+        // Update filter operators based on selected column's presumed type
+        // This is a simplified type detection. Real implementation might need backend to provide column types.
+        $('#filterColumn').change(function() {
+            updateFilterOperators();
+        });
+
+        function updateFilterOperators() {
+            const selectedColumn = $('#filterColumn').val();
+            const $operatorSelect = $('#filterOperator');
+            $operatorSelect.empty();
+
+            // Simplified: Assume numeric if common numeric keywords in name, else string.
+            // A more robust solution would get actual dtypes from backend or first few rows.
+            const isLikelyNumeric = selectedColumn && (selectedColumn.toLowerCase().includes('yard') || selectedColumn.toLowerCase().includes('td') || selectedColumn.toLowerCase().includes('id') || selectedColumn.toLowerCase().includes('value') || selectedColumn.toLowerCase().includes('sh') || selectedColumn.toLowerCase().includes('epa'));
+
+            if (isLikelyNumeric) {
+                $operatorSelect.append($('<option>', { value: '==', text: '==' }));
+                $operatorSelect.append($('<option>', { value: '!=', text: '!=' }));
+                $operatorSelect.append($('<option>', { value: '>', text: '>' }));
+                $operatorSelect.append($('<option>', { value: '<', text: '<' }));
+                $operatorSelect.append($('<option>', { value: '>=', text: '>=' }));
+                $operatorSelect.append($('<option>', { value: '<=', text: '<=' }));
+            } else { // Assume string/categorical
+                $operatorSelect.append($('<option>', { value: 'equals', text: 'Equals' }));
+                $operatorSelect.append($('<option>', { value: 'contains', text: 'Contains' }));
+                $operatorSelect.append($('<option>', { value: 'startswith', text: 'Starts With' }));
+                $operatorSelect.append($('<option>', { value: 'endswith', text: 'Ends With' }));
+                $operatorSelect.append($('<option>', { value: 'not_equals', text: 'Not Equals' }));
+                $operatorSelect.append($('<option>', { value: 'not_contains', text: 'Not Contains' }));
+            }
+        }
+
+        $('#addFilterBtn').click(function() {
+            const column = $('#filterColumn').val();
+            const operator = $('#filterOperator').val();
+            const value = $('#filterValue').val();
+
+            if (!column || !operator || value.trim() === '') {
+                alert('Please select a column, operator, and enter a value for the filter.');
+                return;
+            }
+            activeFiltersList.push({ column: column, operator: operator, value: value });
+            $('#filterValue').val(''); // Clear value input
+            renderActiveFilters();
+        });
+
+        function renderActiveFilters() {
+            const $activeFiltersDiv = $('#activeFilters');
+            $activeFiltersDiv.empty();
+            if (activeFiltersList.length === 0) {
+                $activeFiltersDiv.append('<p>No active filters.</p>');
+                return;
+            }
+            const $ul = $('<ul>');
+            activeFiltersList.forEach((filter, index) => {
+                const $li = $('<li>').text(`${filter.column} ${filter.operator} "${filter.value}" `);
+                const $removeBtn = $('<button type="button" class="remove-filter-btn">Remove</button>').data('index', index);
+                $li.append($removeBtn);
+                $ul.append($li);
+            });
+            $activeFiltersDiv.append($ul);
+        }
+
+        // Event delegation for remove filter buttons
+        $('#activeFilters').on('click', '.remove-filter-btn', function() {
+            const indexToRemove = $(this).data('index');
+            activeFiltersList.splice(indexToRemove, 1);
+            renderActiveFilters();
+        });
+
+        $('#processDataBtn').click(function() {
+            if (!initialFetchedDataJson) {
+                $('#processError').text("No initial data to process. Please perform a search first.");
+                return;
+            }
+            $('#processError').text(''); // Clear previous errors
+
+            const processingPayload = {
+                data_json_str: initialFetchedDataJson, // Send the *initial* fetched data
+                filters: activeFiltersList,
+                group_by_cols: $('#groupByCols').val() || null,
+                agg_func: $('#aggFunc').val() || null,
+                agg_cols: $('#aggCols').val() || null,
+                final_columns: $('#finalColumns').val() || null
+            };
+
+            console.log("Processing Payload:", processingPayload);
+
+            $.ajax({
+                url: '/process_data', // New backend endpoint
+                type: 'POST',
+                contentType: 'application/json', // Send as JSON
+                data: JSON.stringify(processingPayload),
+                success: function(response) {
+                    if (response.error) {
+                        $('#processError').text('Processing Error: ' + response.error);
+                        return;
+                    }
+                    if (response.data) {
+                        currentlyDisplayedDataJson = response.data; // Update with processed data
+                        currentlyDisplayedColumns = response.columns || [];
+                        const dfObject = JSON.parse(currentlyDisplayedDataJson);
+
+                        // Update table
+                        const tableHead = $('#dataTable thead');
+                        const tableBody = $('#dataTable tbody');
+                        tableHead.empty();
+                        tableBody.empty();
+
+                        if (dfObject.columns && dfObject.columns.length > 0) {
+                            $('#dataInfo').text(`Displaying ${dfObject.data.length} rows and ${dfObject.columns.length} columns (processed).`);
+                            let headerRow = '<tr>';
+                            dfObject.columns.forEach(col => headerRow += '<th>' + col + '</th>');
+                            headerRow += '</tr>';
+                            tableHead.append(headerRow);
+
+                            if (dfObject.data.length > 0) {
+                                dfObject.data.forEach(rowData => {
+                                    let row = '<tr>';
+                                    rowData.forEach(cell => row += '<td>' + (cell !== null ? cell : '') + '</td>');
+                                    row += '</tr>';
+                                    tableBody.append(row);
+                                });
+                            } else {
+                                 tableBody.append('<tr><td colspan="' + dfObject.columns.length + '">No data rows after processing.</td></tr>');
+                            }
+                        } else {
+                            $('#dataInfo').text('Processing returned no data or columns.');
+                             tableBody.append('<tr><td>Processing returned no data or columns.</td></tr>');
+                        }
+
+                        // Update visualization dropdowns
+                        populateSelectWithOptions('#x_axis', currentlyDisplayedColumns);
+                        populateSelectWithOptions('#y_axis', currentlyDisplayedColumns);
+                        populateSelectWithOptions('#color_by', currentlyDisplayedColumns, true);
+                        $('#plotDiv').empty(); // Clear old plot as data has changed
+                    }
+                },
+                error: function(xhr) {
+                    const errorMsg = xhr.responseJSON ? xhr.responseJSON.error : xhr.statusText;
+                    $('#processError').text('Processing request failed: ' + errorMsg);
+                }
+            });
+        });
+
+
         $('#visualizeBtn').click(function() {
             $('#vizError').text('');
 
-            if (!currentData) {
-                $('#vizError').text('No data available to visualize. Please perform a search first.');
+            if (!currentlyDisplayedDataJson) { // Use currently displayed data for visualization
+                $('#vizError').text('No data available to visualize. Please perform a search and/or processing first.');
                 return;
             }
 
             const vizPayload = {
-                data_json_str: currentData,
+                data_json_str: currentlyDisplayedDataJson,
                 viz_type: $('#viz_type').val(),
                 x_axis: $('#x_axis').val(),
                 y_axis: $('#y_axis').val(),
