@@ -31,7 +31,7 @@ def search_data():
         if years_str and years_str.strip():
             try:
                 kwargs['years'] = [int(year.strip()) for year in years_str.split(',') if year.strip()]
-                if not kwargs['years']: # Handle if years_str was just commas or whitespace
+                if not kwargs['years']:
                     kwargs.pop('years', None)
             except ValueError:
                 return jsonify({'error': 'Invalid format for years. Please provide comma-separated integers.'}), 400
@@ -90,10 +90,10 @@ def search_data():
             df = nfl.import_combine_data(**get_valid_kwargs(nfl.import_combine_data, kwargs))
 
         elif function_name == 'import_draft_picks':
-            if not kwargs.get('years') and nfl.import_draft_picks.__defaults__ is None or 'years' not in nfl.import_draft_picks.__code__.co_varnames[len(nfl.import_draft_picks.__code__.co_args)-len(nfl.import_draft_picks.__defaults__):]: # check if years is mandatory
-                 pass # If years is optional in lib, and not provided, it's fine. UI might make it seem mandatory.
+            # Years is optional in lib according to its signature (years=None).
+            # GUI makes it seem mandatory but payload.get('years') could be empty.
+            # get_valid_kwargs will handle passing 'years' only if it's in kwargs.
             df = nfl.import_draft_picks(**get_valid_kwargs(nfl.import_draft_picks, kwargs))
-
 
         elif function_name == 'import_qbr':
             kwargs['level'] = payload.get('qbr_level', 'nfl')
@@ -122,29 +122,27 @@ def search_data():
 
         elif function_name == 'import_depth_charts':
             if not kwargs.get('years'): return jsonify({'error': 'Years are required for Depth Charts.'}), 400
-            df = nfl.import_depth_charts(years=kwargs['years'])
+            df = nfl.import_depth_charts(years=kwargs['years']) # This function only takes years
 
         elif function_name == 'import_injuries':
             if not kwargs.get('years'): return jsonify({'error': 'Years are required for Injury Reports.'}), 400
-            df = nfl.import_injuries(years=kwargs['years'])
+            df = nfl.import_injuries(years=kwargs['years']) # This function only takes years
 
         elif function_name == 'import_schedules':
             if not kwargs.get('years'): return jsonify({'error': 'Years are required for Schedules.'}), 400
-            df = nfl.import_schedules(years=kwargs['years'])
+            df = nfl.import_schedules(years=kwargs['years']) # This function only takes years
 
-        elif function_name == 'import_officials':
+        elif function_name == 'import_officials': # years is optional
             df = nfl.import_officials(**get_valid_kwargs(nfl.import_officials, kwargs))
 
-        elif function_name == 'import_win_totals':
+        elif function_name == 'import_win_totals': # years is optional
              df = nfl.import_win_totals(**get_valid_kwargs(nfl.import_win_totals, kwargs))
 
-        elif function_name == 'import_sc_lines':
+        elif function_name == 'import_sc_lines': # years is optional
              df = nfl.import_sc_lines(**get_valid_kwargs(nfl.import_sc_lines, kwargs))
 
-        elif function_name == 'import_draft_values':
-            # This function might take 'picks' argument. Add if UI supports.
+        elif function_name == 'import_draft_values': # picks is optional
             df = nfl.import_draft_values(**get_valid_kwargs(nfl.import_draft_values, kwargs))
-
 
         elif function_name == 'import_team_desc':
             df = nfl.import_team_desc()
@@ -214,22 +212,20 @@ def visualize_data():
         if actual_color_by:
             title += f' by {actual_color_by}'
 
-        # Attempt to convert to numeric where appropriate for plotting
-        # This is a common source of issues if data isn't clean or has mixed types
         for col_to_convert in [x_axis, y_axis]:
             if col_to_convert in df.columns:
                 try:
-                    df[col_to_convert] = pd.to_numeric(df[col_to_convert])
-                except ValueError:
-                    print(f"Could not convert column {col_to_convert} to numeric. Plotly will attempt to handle as is.")
+                    # Attempt conversion only if not already numeric, to avoid issues with datetimes etc.
+                    if not pd.api.types.is_numeric_dtype(df[col_to_convert]):
+                        df[col_to_convert] = pd.to_numeric(df[col_to_convert])
+                except (ValueError, TypeError): # Broader exception capture
+                    print(f"Could not convert column {col_to_convert} to numeric for plotting. Plotly will attempt to handle as is.")
 
 
         if viz_type == 'scatter':
             fig = px.scatter(df, x=x_axis, y=y_axis, color=actual_color_by, title=title)
         elif viz_type == 'line':
-            # For line plots, sorting by x-axis is often desirable if it's ordered (e.g., time, season)
-            # df_sorted = df.sort_values(by=x_axis) if x_axis in df.columns and pd.api.types.is_numeric_dtype(df[x_axis]) else df
-            fig = px.line(df, x=x_axis, y=y_axis, color=actual_color_by, title=title) # Using original df for now
+            fig = px.line(df, x=x_axis, y=y_axis, color=actual_color_by, title=title)
         elif viz_type == 'bar':
             fig = px.bar(df, x=x_axis, y=y_axis, color=actual_color_by, title=title)
         elif viz_type == 'histogram':
@@ -261,7 +257,6 @@ def get_columns_for_data_type():
         elif data_type_param == 'weekly':
             cols = nfl.see_weekly_cols()
         else:
-            # Not an error, just means no specific helper for this type
             return jsonify({'columns': [], 'message': 'No specific column helper for this data type.'})
     except Exception as e:
         print(f"Error calling column helper for {data_type_param}: {e}\n{traceback.format_exc()}")

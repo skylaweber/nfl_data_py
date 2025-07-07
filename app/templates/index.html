@@ -216,12 +216,12 @@
             'import_seasonal_data': { paramsDiv: '#params_import_seasonal_data', usesYears: true, yearsRequired: true, usesColumns: false },
             'import_seasonal_rosters': { paramsDiv: null, usesYears: true, yearsRequired: true, usesColumns: true },
             'import_weekly_rosters': { paramsDiv: null, usesYears: true, yearsRequired: true, usesColumns: true },
-            'import_ngs_data': { paramsDiv: '#params_import_ngs_data', usesYears: true, yearsRequired: false, usesColumns: false }, // Years optional in lib
-            'import_combine_data': { paramsDiv: '#params_import_combine_data', usesYears: true, yearsRequired: false, usesColumns: false }, // Years optional in lib
-            'import_draft_picks': { paramsDiv: null, usesYears: true, yearsRequired: false, usesColumns: false }, // Years optional in lib; GUI makes it required for consistency for now.
-            'import_qbr': { paramsDiv: '#params_import_qbr', usesYears: true, yearsRequired: false, usesColumns: false }, // Years optional in lib
-            'import_seasonal_pfr': { paramsDiv: '#params_import_seasonal_pfr', usesYears: true, yearsRequired: false, usesColumns: false }, // Years optional
-            'import_weekly_pfr': { paramsDiv: '#params_import_weekly_pfr', usesYears: true, yearsRequired: false, usesColumns: false }, // Years optional
+            'import_ngs_data': { paramsDiv: '#params_import_ngs_data', usesYears: true, yearsRequired: false, usesColumns: false },
+            'import_combine_data': { paramsDiv: '#params_import_combine_data', usesYears: true, yearsRequired: false, usesColumns: false },
+            'import_draft_picks': { paramsDiv: null, usesYears: true, yearsRequired: false, usesColumns: false },
+            'import_qbr': { paramsDiv: '#params_import_qbr', usesYears: true, yearsRequired: false, usesColumns: false },
+            'import_seasonal_pfr': { paramsDiv: '#params_import_seasonal_pfr', usesYears: true, yearsRequired: false, usesColumns: false },
+            'import_weekly_pfr': { paramsDiv: '#params_import_weekly_pfr', usesYears: true, yearsRequired: false, usesColumns: false },
             'import_snap_counts': { paramsDiv: null, usesYears: true, yearsRequired: true, usesColumns: false },
             'import_ftn_data': { paramsDiv: '#params_import_ftn_data', usesYears: true, yearsRequired: true, usesColumns: true },
             'import_depth_charts': { paramsDiv: null, usesYears: true, yearsRequired: true, usesColumns: false },
@@ -230,17 +230,17 @@
             'import_officials': { paramsDiv: null, usesYears: true, yearsRequired: false, usesColumns: false },
             'import_win_totals': { paramsDiv: null, usesYears: true, yearsRequired: false, usesColumns: false },
             'import_sc_lines': { paramsDiv: null, usesYears: true, yearsRequired: false, usesColumns: false },
-            'import_draft_values': { paramsDiv: null, usesYears: false, usesColumns: false }, // No years input
-            'import_team_desc': { paramsDiv: null, usesYears: false, usesColumns: false }, // No years input
-            'import_contracts': { paramsDiv: null, usesYears: false, usesColumns: false }, // No years input
-            'import_ids': { paramsDiv: '#params_import_ids', usesYears: false, usesColumns: true }, // No years input
-            'import_players': { paramsDiv: null, usesYears: false, usesColumns: false } // No years input
+            'import_draft_values': { paramsDiv: null, usesYears: false, usesColumns: false },
+            'import_team_desc': { paramsDiv: null, usesYears: false, usesColumns: false },
+            'import_contracts': { paramsDiv: null, usesYears: false, usesColumns: false },
+            'import_ids': { paramsDiv: '#params_import_ids', usesYears: false, usesColumns: true },
+            'import_players': { paramsDiv: null, usesYears: false, usesColumns: false }
         };
 
         $('#function_name').change(function() {
             const selectedFunction = $(this).val();
             $('.options-group').addClass('hidden');
-            $('#common_params').addClass('hidden'); // Default to hidden, then show if needed
+            $('#common_params').addClass('hidden');
             $('#availableColumns').html('');
             $('#columns_search').val('');
             $('#years').val('');
@@ -252,23 +252,17 @@
 
             if (selectedFunction && functionParamMap[selectedFunction]) {
                 const config = functionParamMap[selectedFunction];
-                // Only show common_params if either years or columns are used by the function.
                 if (config.usesYears || config.usesColumns) {
                     $('#common_params').removeClass('hidden');
                 }
 
                 $('#years_label, #years').toggle(!!config.usesYears);
-                // Note: HTML 'required' attribute might not be enough for complex forms,
-                // rely on JS validation before submit and backend validation.
+                // Backend handles actual requirement validation based on function's needs
                 // $('#years').prop('required', !!config.yearsRequired);
 
-
                 $('#columns_search_label, #columns_search').toggle(!!config.usesColumns);
-                // Show fetch button only if it's relevant AND columns are generally used
                 $('#fetchColumnsBtn').toggle(!!config.fetchableColsType && !!config.usesColumns);
-                // Show available columns div only if columns are generally used
                 $('#availableColumns').toggle(!!config.usesColumns);
-
 
                 if (config.paramsDiv) {
                     $(config.paramsDiv).removeClass('hidden');
@@ -327,13 +321,12 @@
 
             if (config.usesYears) {
                 const yearsVal = $('#years').val();
-                if (config.yearsRequired && (!yearsVal || yearsVal.trim() === '')) {
-                    $('#searchError').text('Years are required for this function.');
-                    return;
-                }
-                // Only add years to payload if it has a value, to allow library defaults for optional years
+                // Backend will check if years is truly required for that function if yearsVal is empty
                 if (yearsVal && yearsVal.trim() !== '') {
                     payload.years = yearsVal;
+                } else if (config.yearsRequired) { // If JS map says it's required but it's empty
+                     $('#searchError').text('Years are required for this function.');
+                    return;
                 }
             }
             if (config.usesColumns) {
@@ -398,10 +391,10 @@
                             populateSelectWithOptions('#y_axis', currentDataColumns);
                             populateSelectWithOptions('#color_by', currentDataColumns, true);
                             $('#visualizationForm').removeClass('hidden');
-                        } else { // Handles case where df might have 0 columns (e.g. error or truly empty)
+                        } else {
                              $('#searchError').text('Search returned no data or columns.');
                              $('#dataInfo').text('Search returned no data or columns.');
-                             $('#dataDisplay').removeClass('hidden'); // Show to display message in dataInfo
+                             $('#dataDisplay').removeClass('hidden');
                         }
                     }
                 },
@@ -414,7 +407,6 @@
 
         $('#visualizeBtn').click(function() {
             $('#vizError').text('');
-            // $('#plotDiv').empty(); // Keep previous plot if user wants to compare or if error
 
             if (!currentData) {
                 $('#vizError').text('No data available to visualize. Please perform a search first.');
@@ -435,7 +427,7 @@
                 data: vizPayload,
                 success: function(response) {
                     if (response.graph_json) {
-                        $('#plotDiv').empty(); // Clear previous plot before rendering new one
+                        $('#plotDiv').empty();
                         const graphData = JSON.parse(response.graph_json);
                         Plotly.newPlot('plotDiv', graphData.data, graphData.layout);
                     } else if (response.error) {
