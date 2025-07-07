@@ -10,15 +10,18 @@
         .container { background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
         h1, h2 { color: #555; }
         label { display: block; margin-top: 10px; font-weight: bold; }
+        input[type="text"], input[type="checkbox"], select { margin-right: 5px; margin-bottom: 5px; }
         input[type="text"], select { width: calc(100% - 22px); padding: 10px; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        input[type="checkbox"] { width: auto; }
         button { background-color: #007bff; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; margin-top: 20px; }
         button:hover { background-color: #0056b3; }
         #dataTable { margin-top: 20px; width: 100%; border-collapse: collapse; }
         #dataTable th, #dataTable td { border: 1px solid #ddd; padding: 8px; text-align: left; }
         #dataTable th { background-color: #f0f0f0; }
-        #plotDiv { margin-top: 30px; }
-        .error { color: red; margin-top: 10px; }
-        .form-group { margin-bottom: 15px; }
+        #plotDiv { margin-top: 30px; min-height: 400px; } /* Ensure plotDiv has some height */
+        .error { color: red; margin-top: 10px; font-weight: bold; }
+        .form-group { margin-bottom: 15px; padding: 10px; border: 1px solid #eee; border-radius: 4px;}
+        .specific-params label { font-weight: normal; } /* Less emphasis for sub-options */
         .hidden { display: none; }
     </style>
 </head>
@@ -59,33 +62,36 @@
             </select>
 
             <div id="common_params" class="options-group hidden">
-                <label for="years">Years (comma-separated):</label>
+                <label for="years" id="years_label">Years (comma-separated):</label>
                 <input type="text" id="years" name="years" placeholder="e.g., 2022,2023">
 
                 <label for="columns_search" id="columns_search_label">Columns (comma-separated, optional):</label>
-                <input type="text" id="columns_search" name="columns_search" placeholder="e.g., player_name,pass_yards. See nflverse docs for options.">
+                <input type="text" id="columns_search" name="columns_str" placeholder="e.g., player_name,pass_yards. See nflverse docs for options.">
                 <button type="button" id="fetchColumnsBtn" title="Fetches common columns for Play-by-Play or Weekly data types.">Fetch Columns (PBP/Weekly only)</button>
                 <div id="availableColumns" style="margin-top:10px;"></div>
             </div>
 
             <!-- Function-specific parameters -->
             <div id="params_import_pbp_data" class="specific-params options-group hidden">
+                <h4>PBP Options:</h4>
                 <label title="Include player participation data with PBP."><input type="checkbox" name="pbp_include_participation" checked> Include Participation</label>
                 <label title="Convert large float numbers to smaller type to save memory. May slightly reduce precision and slow initial load."><input type="checkbox" name="pbp_downcast" checked> Downcast Floats</label>
                 <label title="Use locally cached PBP data if available (see nfl_data_py docs for cache_pbp function)."><input type="checkbox" name="pbp_cache"> Use Cache</label>
                 <label for="pbp_alt_path">Alt Cache Path:</label>
-                <input type="text" name="pbp_alt_path" placeholder="Optional path if using local cache" title="Specify alternative path for PBP cache.">
+                <input type="text" id="pbp_alt_path" name="pbp_alt_path" placeholder="Optional path if using local cache" title="Specify alternative path for PBP cache.">
                 <label title="Download data for multiple years concurrently. Faster for good connections."><input type="checkbox" name="pbp_thread_requests"> Thread Requests</label>
             </div>
 
             <div id="params_import_weekly_data" class="specific-params options-group hidden">
+                <h4>Weekly Data Options:</h4>
                 <label title="Convert large float numbers to smaller type to save memory. May slightly reduce precision and slow initial load."><input type="checkbox" name="weekly_downcast" checked> Downcast Floats</label>
                 <label title="Download data for multiple years concurrently. Faster for good connections."><input type="checkbox" name="weekly_thread_requests"> Thread Requests</label>
             </div>
 
             <div id="params_import_seasonal_data" class="specific-params options-group hidden">
+                <h4>Seasonal Data Options:</h4>
                 <label for="seasonal_s_type">Season Type:</label>
-                <select name="seasonal_s_type">
+                <select id="seasonal_s_type" name="seasonal_s_type">
                     <option value="REG">REG</option>
                     <option value="ALL">ALL</option>
                     <option value="POST">POST</option>
@@ -93,13 +99,15 @@
             </div>
 
             <div id="params_import_combine_data" class="specific-params options-group hidden">
+                <h4>Combine Data Options:</h4>
                 <label for="combine_positions">Positions (comma-separated):</label>
-                <input type="text" name="combine_positions" placeholder="e.g., WR,QB">
+                <input type="text" id="combine_positions" name="combine_positions" placeholder="e.g., WR,QB">
             </div>
 
             <div id="params_import_ngs_data" class="specific-params options-group hidden">
+                <h4>NGS Data Options:</h4>
                 <label for="ngs_stat_type">NGS Stat Type:</label>
-                <select name="ngs_stat_type">
+                <select id="ngs_stat_type" name="ngs_stat_type">
                     <option value="passing">Passing</option>
                     <option value="rushing">Rushing</option>
                     <option value="receiving">Receiving</option>
@@ -107,21 +115,23 @@
             </div>
 
             <div id="params_import_qbr" class="specific-params options-group hidden">
+                <h4>QBR Data Options:</h4>
                 <label for="qbr_level">QBR Level:</label>
-                <select name="qbr_level">
+                <select id="qbr_level" name="qbr_level">
                     <option value="nfl">NFL</option>
                     <option value="college">College</option>
                 </select>
                 <label for="qbr_frequency">QBR Frequency:</label>
-                <select name="qbr_frequency">
+                <select id="qbr_frequency" name="qbr_frequency">
                     <option value="season">Season</option>
                     <option value="weekly">Weekly</option>
                 </select>
             </div>
 
             <div id="params_import_seasonal_pfr" class="specific-params options-group hidden">
+                <h4>Seasonal PFR Options:</h4>
                 <label for="pfr_seasonal_s_type">PFR Stat Type:</label>
-                <select name="pfr_seasonal_s_type">
+                <select id="pfr_seasonal_s_type" name="pfr_seasonal_s_type">
                     <option value="pass">Pass</option>
                     <option value="rec">Rec</option>
                     <option value="rush">Rush</option>
@@ -130,8 +140,9 @@
             </div>
 
             <div id="params_import_weekly_pfr" class="specific-params options-group hidden">
+                <h4>Weekly PFR Options:</h4>
                 <label for="pfr_weekly_s_type">PFR Stat Type:</label>
-                <select name="pfr_weekly_s_type">
+                <select id="pfr_weekly_s_type" name="pfr_weekly_s_type">
                     <option value="pass">Pass</option>
                     <option value="rec">Rec</option>
                     <option value="rush">Rush</option>
@@ -140,15 +151,16 @@
             </div>
 
             <div id="params_import_ftn_data" class="specific-params options-group hidden">
+                 <h4>FTN Data Options:</h4>
                  <label title="Convert large float numbers to smaller type to save memory. May slightly reduce precision and slow initial load."><input type="checkbox" name="ftn_downcast" checked> Downcast Floats</label>
                  <label title="Download data for multiple years concurrently. Faster for good connections."><input type="checkbox" name="ftn_thread_requests"> Thread Requests</label>
             </div>
 
             <div id="params_import_ids" class="specific-params options-group hidden">
+                <h4>Player ID Options:</h4>
                 <label for="ids_ids">Player IDs to return (subset, comma-separated, optional):</label>
-                <input type="text" name="ids_ids" placeholder="e.g., 00-0033873,00-0026498">
+                <input type="text" id="ids_ids" name="ids_ids" placeholder="e.g., 00-0033873,00-0026498">
             </div>
-
 
             <button id="searchBtn">Search Data</button>
         </div>
@@ -156,7 +168,8 @@
 
         <div id="dataDisplay" class="hidden">
             <h2>Search Results</h2>
-            <div style="max-height: 400px; overflow-y: auto;">
+            <div id="dataInfo" style="margin-bottom:10px;"></div>
+            <div style="max-height: 400px; overflow-y: auto; border: 1px solid #ccc;">
                 <table id="dataTable">
                     <thead></thead>
                     <tbody></tbody>
@@ -188,68 +201,70 @@
             <button id="visualizeBtn">Generate Visualization</button>
         </div>
         <div id="vizError" class="error"></div>
-        <div id="plotDiv"></div>
+        <div id="plotDiv"></div> <!-- Plotly graph will be rendered here -->
     </div>
 
     <script>
-        let currentData = null; // To store the current search result data (JSON string)
+        let currentData = null; // To store the current search result data (JSON string from df.to_json(orient='split'))
         let currentDataColumns = []; // To store column names from current search
 
-        // Map function names to their parameter div IDs and whether they use common params
+        // Map function names to their parameter div IDs and configuration
         const functionParamMap = {
-            'import_pbp_data': { paramsDiv: '#params_import_pbp_data', usesCommon: true, usesYears: true, usesColumns: true, fetchableColsType: 'pbp' },
-            'import_weekly_data': { paramsDiv: '#params_import_weekly_data', usesCommon: true, usesYears: true, usesColumns: true, fetchableColsType: 'weekly' },
-            'import_seasonal_data': { paramsDiv: '#params_import_seasonal_data', usesCommon: true, usesYears: true, usesColumns: false }, // Columns are mostly fixed by logic
-            'import_seasonal_rosters': { paramsDiv: null, usesCommon: true, usesYears: true, usesColumns: true },
-            'import_weekly_rosters': { paramsDiv: null, usesCommon: true, usesYears: true, usesColumns: true },
-            'import_ngs_data': { paramsDiv: '#params_import_ngs_data', usesCommon: true, usesYears: true, usesColumns: false }, // Columns fixed by stat_type
-            'import_combine_data': { paramsDiv: '#params_import_combine_data', usesCommon: true, usesYears: true, usesColumns: false }, // Columns fixed
-            'import_draft_picks': { paramsDiv: null, usesCommon: true, usesYears: true, usesColumns: false }, // Columns fixed
-            'import_qbr': { paramsDiv: '#params_import_qbr', usesCommon: true, usesYears: true, usesColumns: false }, // Columns fixed
-            'import_seasonal_pfr': { paramsDiv: '#params_import_seasonal_pfr', usesCommon: true, usesYears: true, usesColumns: false },
-            'import_weekly_pfr': { paramsDiv: '#params_import_weekly_pfr', usesCommon: true, usesYears: true, usesColumns: false },
-            'import_snap_counts': { paramsDiv: null, usesCommon: true, usesYears: true, usesColumns: false },
-            'import_ftn_data': { paramsDiv: '#params_import_ftn_data', usesCommon: true, usesYears: true, usesColumns: true },
-            'import_depth_charts': { paramsDiv: null, usesCommon: true, usesYears: true, usesColumns: false },
-            'import_injuries': { paramsDiv: null, usesCommon: true, usesYears: true, usesColumns: false },
-            'import_schedules': { paramsDiv: null, usesCommon: true, usesYears: true, usesColumns: false },
-            // Functions generally not taking 'years' or 'columns' in the same way
-            'import_officials': { paramsDiv: null, usesCommon: true, usesYears: true, usesColumns: false }, // years is optional
-            'import_win_totals': { paramsDiv: null, usesCommon: true, usesYears: true, usesColumns: false }, // years is optional
-            'import_sc_lines': { paramsDiv: null, usesCommon: true, usesYears: true, usesColumns: false }, // years is optional
-            'import_draft_values': { paramsDiv: null, usesCommon: false }, // No years/cols
-            'import_team_desc': { paramsDiv: null, usesCommon: false }, // No years/cols
-            'import_contracts': { paramsDiv: null, usesCommon: false }, // No years/cols
-            'import_ids': { paramsDiv: '#params_import_ids', usesCommon: true, usesYears: false, usesColumns: true }, // uses columns for subset, not years.
-            'import_players': { paramsDiv: null, usesCommon: false } // No years/cols
+            'import_pbp_data': { paramsDiv: '#params_import_pbp_data', usesYears: true, yearsRequired: true, usesColumns: true, fetchableColsType: 'pbp' },
+            'import_weekly_data': { paramsDiv: '#params_import_weekly_data', usesYears: true, yearsRequired: true, usesColumns: true, fetchableColsType: 'weekly' },
+            'import_seasonal_data': { paramsDiv: '#params_import_seasonal_data', usesYears: true, yearsRequired: true, usesColumns: false },
+            'import_seasonal_rosters': { paramsDiv: null, usesYears: true, yearsRequired: true, usesColumns: true },
+            'import_weekly_rosters': { paramsDiv: null, usesYears: true, yearsRequired: true, usesColumns: true },
+            'import_ngs_data': { paramsDiv: '#params_import_ngs_data', usesYears: true, yearsRequired: false, usesColumns: false }, // Years optional in lib
+            'import_combine_data': { paramsDiv: '#params_import_combine_data', usesYears: true, yearsRequired: false, usesColumns: false }, // Years optional in lib
+            'import_draft_picks': { paramsDiv: null, usesYears: true, yearsRequired: false, usesColumns: false }, // Years optional in lib
+            'import_qbr': { paramsDiv: '#params_import_qbr', usesYears: true, yearsRequired: false, usesColumns: false }, // Years optional in lib
+            'import_seasonal_pfr': { paramsDiv: '#params_import_seasonal_pfr', usesYears: true, yearsRequired: false, usesColumns: false }, // Years optional
+            'import_weekly_pfr': { paramsDiv: '#params_import_weekly_pfr', usesYears: true, yearsRequired: false, usesColumns: false }, // Years optional
+            'import_snap_counts': { paramsDiv: null, usesYears: true, yearsRequired: true, usesColumns: false },
+            'import_ftn_data': { paramsDiv: '#params_import_ftn_data', usesYears: true, yearsRequired: true, usesColumns: true },
+            'import_depth_charts': { paramsDiv: null, usesYears: true, yearsRequired: true, usesColumns: false },
+            'import_injuries': { paramsDiv: null, usesYears: true, yearsRequired: true, usesColumns: false },
+            'import_schedules': { paramsDiv: null, usesYears: true, yearsRequired: true, usesColumns: false },
+            'import_officials': { paramsDiv: null, usesYears: true, yearsRequired: false, usesColumns: false }, // years optional
+            'import_win_totals': { paramsDiv: null, usesYears: true, yearsRequired: false, usesColumns: false }, // years optional
+            'import_sc_lines': { paramsDiv: null, usesYears: true, yearsRequired: false, usesColumns: false }, // years optional
+            'import_draft_values': { paramsDiv: null, usesYears: false, usesColumns: false },
+            'import_team_desc': { paramsDiv: null, usesYears: false, usesColumns: false },
+            'import_contracts': { paramsDiv: null, usesYears: false, usesColumns: false },
+            'import_ids': { paramsDiv: '#params_import_ids', usesYears: false, usesColumns: true },
+            'import_players': { paramsDiv: null, usesYears: false, usesColumns: false }
         };
 
         $('#function_name').change(function() {
             const selectedFunction = $(this).val();
-            $('.options-group').addClass('hidden'); // Hide all common and specific param groups
+            $('.options-group').addClass('hidden');
+            $('#common_params').addClass('hidden');
             $('#availableColumns').html('');
-            $('#columns_search').val(''); // Clear columns input
-            $('#years').val(''); // Clear years input
+            $('#columns_search').val('');
+            $('#years').val('');
+            $('#searchError').text('');
+            $('#dataDisplay').addClass('hidden');
+            $('#visualizationForm').addClass('hidden');
+            $('#plotDiv').empty();
 
 
             if (selectedFunction && functionParamMap[selectedFunction]) {
                 const config = functionParamMap[selectedFunction];
-                if (config.usesCommon) {
-                    $('#common_params').removeClass('hidden');
-                    $('#years').prop('required', !!config.usesYears).closest('label').toggle(!!config.usesYears);
-                    $('#columns_search').closest('label').add('#columns_search').add('#fetchColumnsBtn').add('#availableColumns').toggle(!!config.usesColumns);
-                     $('#fetchColumnsBtn').toggle(!!config.fetchableColsType);
-                } else {
-                    // Ensure years and columns are hidden if not part of common params for this function
-                     $('#years').prop('required', false).closest('label').hide();
-                     $('#columns_search').closest('label').add('#columns_search').add('#fetchColumnsBtn').add('#availableColumns').hide();
-                }
+                $('#common_params').removeClass('hidden'); // Show common by default if a function is selected
+
+                $('#years_label, #years').toggle(!!config.usesYears);
+                $('#years').prop('required', !!config.yearsRequired);
+
+
+                $('#columns_search_label, #columns_search').toggle(!!config.usesColumns);
+                $('#fetchColumnsBtn').toggle(!!config.fetchableColsType && !!config.usesColumns);
+                $('#availableColumns').toggle(!!config.usesColumns);
+
 
                 if (config.paramsDiv) {
                     $(config.paramsDiv).removeClass('hidden');
                 }
-            } else {
-                 $('#common_params').addClass('hidden'); // Hide common if no function selected or no config
             }
         });
 
@@ -261,19 +276,21 @@
             }
 
             if (!fetchType) {
-                $('#availableColumns').html('<p class="error">Column fetching is only available for PBP and Weekly data types via this button.</p>');
+                $('#availableColumns').html('<p class="error">Column fetching is specific to PBP/Weekly via this button.</p>');
                 return;
             }
             $('#availableColumns').html('<p>Loading columns...</p>');
             $.ajax({
-                url: '/get_columns', // Backend needs to handle 'fetchType' (e.g. 'pbp', 'weekly')
+                url: '/get_columns',
                 type: 'GET',
-                data: { data_type: fetchType }, // Changed 'data_type' to 'fetchType' for clarity if backend changes
+                data: { data_type: fetchType },
                 success: function(response) {
                     if (response.columns && response.columns.length > 0) {
                         $('#availableColumns').html('<p><strong>Available columns:</strong> ' + response.columns.join(', ') + '</p>');
+                    } else if (response.error) {
+                        $('#availableColumns').html('<p class="error">' + response.error + '</p>');
                     } else {
-                        $('#availableColumns').html('<p>No specific columns listed for this type, or unable to fetch. You can still try inputting columns manually.</p>');
+                         $('#availableColumns').html('<p>No columns listed or unable to fetch.</p>');
                     }
                 },
                 error: function(xhr) {
@@ -287,6 +304,7 @@
             $('#dataDisplay').addClass('hidden');
             $('#visualizationForm').addClass('hidden');
             $('#plotDiv').empty();
+            $('#dataInfo').text('');
             currentData = null;
             currentDataColumns = [];
 
@@ -296,78 +314,85 @@
                 return;
             }
 
-            let payload = {
-                function_name: selectedFunction,
-                // Common parameters that might be used by many functions
-                years: $('#years').val() || null, // Send null if empty, backend to handle
-                columns_str: $('#columns_search').val() || null,
-            };
-
-            // Add function-specific parameters from the visible form
             const config = functionParamMap[selectedFunction];
-            if (config && config.paramsDiv) {
+            let payload = { function_name: selectedFunction };
+
+            if (config.usesYears) {
+                const yearsVal = $('#years').val();
+                if (config.yearsRequired && (!yearsVal || yearsVal.trim() === '')) {
+                    $('#searchError').text('Years are required for this function.');
+                    return;
+                }
+                payload.years = yearsVal || null;
+            }
+            if (config.usesColumns) {
+                payload.columns_str = $('#columns_search').val() || null;
+            }
+
+            if (config.paramsDiv) {
                 $(`${config.paramsDiv} input, ${config.paramsDiv} select`).each(function() {
                     const input = $(this);
+                    const name = input.attr('name');
                     if (input.attr('type') === 'checkbox') {
-                        payload[input.attr('name')] = input.is(':checked');
-                    } else {
-                        payload[input.attr('name')] = input.val();
+                        payload[name] = input.is(':checked');
+                    } else if (input.val() !== null && input.val().trim() !== '') { // Only add if not empty
+                        payload[name] = input.val();
                     }
                 });
             }
-             // Override years and columns if the function is not configured to use them from common_params
-            if (config && !config.usesYears) payload.years = null;
-            if (config && !config.usesColumns) payload.columns_str = null;
 
+            console.log("Payload:", payload); // For debugging
 
             $.ajax({
                 url: '/search',
                 type: 'POST',
                 data: payload,
                 success: function(response) {
+                    if (response.error) {
+                        $('#searchError').text('Error: ' + response.error);
+                        return;
+                    }
                     if (response.data) {
-                        // response.data is already a JSON string from df.to_json(orient='split')
                         currentData = response.data;
                         currentDataColumns = response.columns || [];
-
-                        // For table display, parse the JSON string into an object
                         const dfObject = JSON.parse(currentData);
 
-                        // Populate table
                         const tableHead = $('#dataTable thead');
                         const tableBody = $('#dataTable tbody');
                         tableHead.empty();
                         tableBody.empty();
 
-                        // dfObject has 'columns' and 'data' (array of arrays)
-                        if (dfObject.columns && dfObject.data && dfObject.data.length > 0) {
+                        if (dfObject.columns && dfObject.columns.length > 0) {
+                             $('#dataInfo').text(`Displaying ${dfObject.data.length} rows and ${dfObject.columns.length} columns.`);
                             let headerRow = '<tr>';
                             dfObject.columns.forEach(col => headerRow += '<th>' + col + '</th>');
                             headerRow += '</tr>';
                             tableHead.append(headerRow);
 
-                            dfObject.data.forEach(rowData => {
-                                let row = '<tr>';
-                                rowData.forEach(cell => row += '<td>' + (cell !== null ? cell : '') + '</td>'); // Handle nulls
-                                row += '</tr>';
-                                tableBody.append(row);
-                            });
+                            if (dfObject.data.length > 0) {
+                                dfObject.data.forEach(rowData => {
+                                    let row = '<tr>';
+                                    rowData.forEach(cell => row += '<td>' + (cell !== null ? cell : '') + '</td>');
+                                    row += '</tr>';
+                                    tableBody.append(row);
+                                });
+                            } else {
+                                tableBody.append('<tr><td colspan="' + dfObject.columns.length + '">No data rows returned for these parameters.</td></tr>');
+                            }
                             $('#dataDisplay').removeClass('hidden');
-
-                            // Populate visualization dropdowns
                             populateSelectWithOptions('#x_axis', currentDataColumns);
                             populateSelectWithOptions('#y_axis', currentDataColumns);
-                            populateSelectWithOptions('#color_by', currentDataColumns, true); // true for optional
+                            populateSelectWithOptions('#color_by', currentDataColumns, true);
                             $('#visualizationForm').removeClass('hidden');
                         } else {
-                             $('#searchError').text('No data returned or data is empty.');
+                             $('#searchError').text('No data or columns returned.');
+                             $('#dataInfo').text('Search returned no data or columns.');
+                             $('#dataDisplay').removeClass('hidden'); // Show to display message
                         }
-                    } else if (response.error) {
-                        $('#searchError').text('Error: ' + response.error);
                     }
                 },
                 error: function(xhr) {
-                    const errorMsg = xhr.responseJSON ? xhr.responseJSON.error : xhr.statusText;
+                     const errorMsg = xhr.responseJSON ? xhr.responseJSON.error : xhr.statusText;
                     $('#searchError').text('Search failed: ' + errorMsg);
                 }
             });
@@ -375,15 +400,16 @@
 
         $('#visualizeBtn').click(function() {
             $('#vizError').text('');
-            $('#plotDiv').empty();
+            // Do not empty plotDiv here if we want to allow multiple plots or update existing
+            // $('#plotDiv').empty();
 
-            if (!currentData) { // currentData stores the JSON string from the server
+            if (!currentData) {
                 $('#vizError').text('No data available to visualize. Please perform a search first.');
                 return;
             }
 
             const vizPayload = {
-                data_json_str: currentData, // Send the raw JSON string (already in 'split' format)
+                data_json_str: currentData,
                 viz_type: $('#viz_type').val(),
                 x_axis: $('#x_axis').val(),
                 y_axis: $('#y_axis').val(),
@@ -415,12 +441,16 @@
             if (includeEmptyOption) {
                 selectElement.append($('<option>', { value: '', text: 'None' }));
             }
-            optionsArray.forEach(option => {
-                selectElement.append($('<option>', {
-                    value: option,
-                    text: option
-                }));
-            });
+            if (optionsArray && optionsArray.length > 0) {
+                optionsArray.forEach(option => {
+                    selectElement.append($('<option>', {
+                        value: option,
+                        text: option
+                    }));
+                });
+            } else {
+                 selectElement.append($('<option>', { value: '', text: 'No columns available' }));
+            }
         }
 
         // Trigger change on page load to set initial visibility of options
