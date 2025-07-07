@@ -168,7 +168,9 @@ def search_data():
              return jsonify({'error': 'No data found for the given parameters (empty result with no columns).'}), 404
 
         df_json_data = df.to_json(orient='split')
-        return jsonify({'data': df_json_data, 'columns': list(df.columns)})
+        # Also return dtypes for dynamic filter operator population
+        dtypes = df.dtypes.apply(lambda x: x.name).to_dict()
+        return jsonify({'data': df_json_data, 'columns': list(df.columns), 'dtypes': dtypes})
 
     except Exception as e:
         print(f"Error in /search for function {payload.get('function_name', 'unknown')}: {e}\n{traceback.format_exc()}")
@@ -244,23 +246,71 @@ def visualize_data():
 
     except Exception as e:
         print(f"Error in /visualize: {e}\n{traceback.format_exc()}")
+        return jsonify({'error': f'An unexpected error occurred during data processing: {str(e)}'}), 500
         return jsonify({'error': f'An unexpected error occurred during visualization: {str(e)}'}), 500
 
 @app.route('/get_columns', methods=['GET'])
 def get_columns_for_data_type():
-    data_type_param = request.args.get('data_type')
-    cols = []
-    error_message = None
-    try:
-        if data_type_param == 'pbp':
-            cols = nfl.see_pbp_cols()
-        elif data_type_param == 'weekly':
-            cols = nfl.see_weekly_cols()
-        else:
-            return jsonify({'columns': [], 'message': 'No specific column helper for this data type.'})
-    except Exception as e:
-        print(f"Error calling column helper for {data_type_param}: {e}\n{traceback.format_exc()}")
-        error_message = f'Could not fetch columns for {data_type_param}.'
-        return jsonify({'columns': [], 'error': error_message}), 500
+    data_type_param = request.args.get('data_type') # This is 'pbp' or 'weekly' for the old helpers
+    function_name_param = request.args.get('function_name')
+    year_sample_str = request.args.get('year_sample')
 
-    return jsonify({'columns': cols})
+    cols = []
+    dtypes_dict = {}
+    error_message = None
+
+    try:
+        if data_type_param == 'pbp' and function_name_param == 'import_pbp_data': # Legacy support
+            cols = nfl.see_pbp_cols()
+            # No easy dtype fetch here, frontend will rely on heuristics for filter operators
+            return jsonify({'columns': cols, 'dtypes': {}})
+        elif data_type_param == 'weekly' and function_name_param == 'import_weekly_data': # Legacy support
+            cols = nfl.see_weekly_cols()
+            return jsonify({'columns': cols, 'dtypes': {}})
+        elif function_name_param: # New generic sample loading
+            func_to_call = getattr(nfl, function_name_param, None)
+            if not func_to_call:
+                return jsonify({'error': f"Unknown function: {function_name_param} for column suggestion."}), 400
+
+            import inspect # For checking function signature
+            import datetime # For default year sample
+
+            sig = inspect.signature(func_to_call)
+            sample_kwargs = {}
+
+            if 'years' in sig.parameters:
+                sample_year = datetime.date.today().year - 1 # Default sample year
+                if year_sample_str and year_sample_str.strip():
+                    try:
+                        sample_year = int(year_sample_str)
+                    except ValueError:
+                        # Keep default sample_year if provided one is bad
+                        print(f"Invalid year_sample '{year_sample_str}', using default {sample_year}")
+                sample_kwargs['years'] = [sample_year]
+
+            # Handle functions that need other specific mandatory args for a basic call
+            if function_name_param == 'import_ngs_data':
+                sample_kwargs['stat_type'] = request.args.get('ngs_stat_type', 'passing')
+            elif function_name_param in ['import_seasonal_pfr', 'import_weekly_pfr']:
+                sample_kwargs['s_type'] = request.args.get('pfr_s_type', 'pass')
+
+            # Filter kwargs to only what the function accepts for the sample call
+            valid_sample_kwargs = {k: v for k,v in sample_kwargs.items() if k in sig.parameters}
+
+            print(f"Attempting generic sample load for {function_name_param} with args: {valid_sample_kwargs}")
+            temp_df = func_to_call(**valid_sample_kwargs)
+
+            if temp_df is not None and not temp_df.empty:
+                cols = temp_df.columns.tolist()
+                dtypes_dict = temp_df.dtypes.apply(lambda x: x.name).to_dict()
+            else:
+                return jsonify({'columns': [], 'dtypes': {}, 'message': f'No data or columns returned from sample load of {function_name_param}.'})
+
+            return jsonify({'columns': cols, 'dtypes': dtypes_dict})
+        else:
+            return jsonify({'error': 'Invalid parameters for column suggestion.'}), 400
+
+    except Exception as e:
+        print(f"Error in /get_columns for {function_name_param or data_type_param}: {e}\n{traceback.format_exc()}")
+        error_message = f'Could not fetch sample columns for {function_name_param or data_type_param}. Error: {str(e)}'
+        return jsonify({'columns': [], 'dtypes': {}, 'error': error_message}), 500

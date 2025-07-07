@@ -256,39 +256,218 @@
         let initialFetchedDataJson = null; // Stores raw JSON string from initial /search
         let currentlyDisplayedDataJson = null; // Stores raw JSON string of data currently in table (can be initial or processed)
         let currentlyDisplayedColumns = []; // Columns of the data currently in table/viz dropdowns
+        let currentColumnDataTypes = {}; // Stores {columnName: dtypeString} for current data
 
         let activeFiltersList = []; // Array to hold filter objects {column, operator, value}
 
         // Map function names to their parameter div IDs and configuration
         const functionParamMap = {
-            'import_pbp_data': { paramsDiv: '#params_import_pbp_data', usesYears: true, yearsRequired: true, usesColumns: true, fetchableColsType: 'pbp' },
-            'import_weekly_data': { paramsDiv: '#params_import_weekly_data', usesYears: true, yearsRequired: true, usesColumns: true, fetchableColsType: 'weekly' },
-            'import_seasonal_data': { paramsDiv: '#params_import_seasonal_data', usesYears: true, yearsRequired: true, usesColumns: false },
-            'import_seasonal_rosters': { paramsDiv: null, usesYears: true, yearsRequired: true, usesColumns: true },
-            'import_weekly_rosters': { paramsDiv: null, usesYears: true, yearsRequired: true, usesColumns: true },
-            'import_ngs_data': { paramsDiv: '#params_import_ngs_data', usesYears: true, yearsRequired: false, usesColumns: false },
-            'import_combine_data': { paramsDiv: '#params_import_combine_data', usesYears: true, yearsRequired: false, usesColumns: false },
-            'import_draft_picks': { paramsDiv: null, usesYears: true, yearsRequired: false, usesColumns: false },
-            'import_qbr': { paramsDiv: '#params_import_qbr', usesYears: true, yearsRequired: false, usesColumns: false },
-            'import_seasonal_pfr': { paramsDiv: '#params_import_seasonal_pfr', usesYears: true, yearsRequired: false, usesColumns: false },
-            'import_weekly_pfr': { paramsDiv: '#params_import_weekly_pfr', usesYears: true, yearsRequired: false, usesColumns: false },
-            'import_snap_counts': { paramsDiv: null, usesYears: true, yearsRequired: true, usesColumns: false },
-            'import_ftn_data': { paramsDiv: '#params_import_ftn_data', usesYears: true, yearsRequired: true, usesColumns: true },
-            'import_depth_charts': { paramsDiv: null, usesYears: true, yearsRequired: true, usesColumns: false },
-            'import_injuries': { paramsDiv: null, usesYears: true, yearsRequired: true, usesColumns: false },
-            'import_schedules': { paramsDiv: null, usesYears: true, yearsRequired: true, usesColumns: false },
-            'import_officials': { paramsDiv: null, usesYears: true, yearsRequired: false, usesColumns: false },
-            'import_win_totals': { paramsDiv: null, usesYears: true, yearsRequired: false, usesColumns: false },
-            'import_sc_lines': { paramsDiv: null, usesYears: true, yearsRequired: false, usesColumns: false },
-            'import_draft_values': { paramsDiv: null, usesYears: false, usesColumns: false },
-            'import_team_desc': { paramsDiv: null, usesYears: false, usesColumns: false },
-            'import_contracts': { paramsDiv: null, usesYears: false, usesColumns: false },
-            'import_ids': { paramsDiv: '#params_import_ids', usesYears: false, usesColumns: true },
-            'import_players': { paramsDiv: null, usesYears: false, usesColumns: false }
+             'import_pbp_data': {
+                description: "Imports play-by-play data. Years (e.g., 2023 or 2020,2021) are required. Columns are optional.",
+                paramsDiv: '#params_import_pbp_data',
+                usesYears: true, yearsRequired: true, yearsPlaceholder: "e.g., 2023 or 2020,2021",
+                usesColumns: true, colsPlaceholder: "e.g., play_id, posteam, desc (optional)",
+                usesColumnSuggest: true,
+                paramsInfo: { // For specific parameter tooltips/placeholders
+                    'pbp_include_participation': {label: "Include Participation", type: 'checkbox', default: true, tooltip: "Merge player participation data with PBP data."},
+                    'pbp_downcast': {label: "Downcast Floats", type: 'checkbox', default: true, tooltip: "Convert float64 to float32 to save memory. May slightly reduce precision."},
+                    'pbp_cache': {label: "Use Cache", type: 'checkbox', default: false, tooltip: "Use locally cached PBP data (if previously cached via nfl.cache_pbp())."},
+                    'pbp_alt_path': {label: "Alt Cache Path:", type: 'text', placeholder: "Path to local PBP cache", tooltip: "Specify alternative path if not using default nfl_data_py cache location."},
+                    'pbp_thread_requests': {label: "Thread Requests", type: 'checkbox', default: false, tooltip: "Use multiple threads to download data for multiple years concurrently (faster for good connections)."}
+                }
+            },
+            'import_weekly_data': {
+                description: "Imports weekly player stats. Years (e.g., 2023) are required. Columns are optional.",
+                paramsDiv: '#params_import_weekly_data',
+                usesYears: true, yearsRequired: true, yearsPlaceholder: "e.g., 2023 or 2020,2021",
+                usesColumns: true, colsPlaceholder: "e.g., player_name, passing_yards (optional)",
+                usesColumnSuggest: true,
+                paramsInfo: {
+                    'weekly_downcast': {label: "Downcast Floats", type: 'checkbox', default: true, tooltip: "Convert float64 to float32 to save memory."},
+                    'weekly_thread_requests': {label: "Thread Requests", type: 'checkbox', default: false, tooltip: "Use multiple threads to download data for multiple years."}
+                }
+            },
+            'import_seasonal_data': {
+                description: "Imports seasonal player stats. Years (e.g., 2023) are required. 'Season Type' defaults to REG.",
+                paramsDiv: '#params_import_seasonal_data',
+                usesYears: true, yearsRequired: true, yearsPlaceholder: "e.g., 2023 or 2020,2021",
+                usesColumns: false,
+                usesColumnSuggest: true,
+                paramsInfo: {
+                    'seasonal_s_type': {label: "Season Type:", type: 'select', options: ['REG', 'ALL', 'POST'], default: 'REG', tooltip: "Specify season segment (Regular, All, Postseason)."}
+                }
+            },
+            'import_seasonal_rosters': {
+                description: "Imports yearly team rosters. Years (e.g., 2023) are required. Columns are optional.",
+                paramsDiv: null,
+                usesYears: true, yearsRequired: true, yearsPlaceholder: "e.g., 2023 or 2020,2021",
+                usesColumns: true, colsPlaceholder: "e.g., player_name, position, team (optional)",
+                usesColumnSuggest: true
+            },
+            'import_weekly_rosters': {
+                description: "Imports team rosters by week, including in-season updates. Years (e.g., 2023) are required. Columns are optional.",
+                paramsDiv: null,
+                usesYears: true, yearsRequired: true, yearsPlaceholder: "e.g., 2023 or 2020,2021",
+                usesColumns: true, colsPlaceholder: "e.g., player_name, position, team, week (optional)",
+                usesColumnSuggest: true
+            },
+            'import_ngs_data': {
+                description: "Imports Next Gen Stats. 'Stat Type' is required. Years are optional (filters if provided).",
+                paramsDiv: '#params_import_ngs_data',
+                usesYears: true, yearsRequired: false, yearsPlaceholder: "e.g., 2023 (optional filter)",
+                usesColumns: false,
+                usesColumnSuggest: true,
+                paramsInfo: {
+                    'ngs_stat_type': {label: "NGS Stat Type:", type: 'select', options: ['passing', 'rushing', 'receiving'], default: 'passing', tooltip: "Type of Next Gen Stats to pull."}
+                }
+            },
+            'import_combine_data': {
+                description: "Imports combine results. Years and Positions (comma-separated, e.g., WR,QB) are optional filters.",
+                paramsDiv: '#params_import_combine_data',
+                usesYears: true, yearsRequired: false, yearsPlaceholder: "e.g., 2023 (optional filter)",
+                usesColumns: false,
+                usesColumnSuggest: true,
+                paramsInfo: {
+                    'combine_positions': {label: "Positions (comma-separated):", type: 'text', placeholder: "e.g., WR,QB", tooltip: "Filter by specific positions."}
+                }
+            },
+            'import_draft_picks': {
+                description: "Imports draft pick history. Years are optional filters.",
+                paramsDiv: null,
+                usesYears: true, yearsRequired: false, yearsPlaceholder: "e.g., 2023 (optional filter)",
+                usesColumns: false,
+                usesColumnSuggest: true
+            },
+            'import_qbr': {
+                description: "Imports QBR data. 'Level' and 'Frequency' determine the dataset. Years are optional filters.",
+                paramsDiv: '#params_import_qbr',
+                usesYears: true, yearsRequired: false, yearsPlaceholder: "e.g., 2023 (optional filter)",
+                usesColumns: false,
+                usesColumnSuggest: true,
+                paramsInfo: {
+                    'qbr_level': {label: "QBR Level:", type: 'select', options: ['nfl', 'college'], default: 'nfl', tooltip: "Competition level (NFL or College)."},
+                    'qbr_frequency': {label: "QBR Frequency:", type: 'select', options: ['season', 'weekly'], default: 'season', tooltip: "Data frequency (Season or Weekly)."}
+                }
+            },
+            'import_seasonal_pfr': {
+                description: "Imports seasonal advanced stats from Pro-Football-Reference. 'PFR Stat Type' is required. Years are optional filters.",
+                paramsDiv: '#params_import_seasonal_pfr',
+                usesYears: true, yearsRequired: false, yearsPlaceholder: "e.g., 2023 (optional filter)",
+                usesColumns: false,
+                usesColumnSuggest: true,
+                 paramsInfo: {
+                    'pfr_seasonal_s_type': {label: "PFR Stat Type:", type: 'select', options: ['pass', 'rec', 'rush', 'def'], default: 'pass', tooltip: "Type of PFR advanced stats."}
+                }
+            },
+            'import_weekly_pfr': {
+                description: "Imports weekly advanced stats from Pro-Football-Reference. 'PFR Stat Type' is required. Years are optional filters.",
+                paramsDiv: '#params_import_weekly_pfr',
+                usesYears: true, yearsRequired: false, yearsPlaceholder: "e.g., 2023 (optional filter)",
+                usesColumns: false,
+                usesColumnSuggest: true,
+                paramsInfo: {
+                    'pfr_weekly_s_type': {label: "PFR Stat Type:", type: 'select', options: ['pass', 'rec', 'rush', 'def'], default: 'pass', tooltip: "Type of PFR advanced stats."}
+                }
+            },
+            'import_snap_counts': {
+                description: "Imports weekly snap count stats. Years (e.g., 2023) are required.",
+                paramsDiv: null,
+                usesYears: true, yearsRequired: true, yearsPlaceholder: "e.g., 2023 or 2020,2021",
+                usesColumns: false,
+                usesColumnSuggest: true
+            },
+            'import_ftn_data': {
+                description: "Imports FTN charting data (2022 onwards). Years (e.g., 2023) are required. Columns are optional.",
+                paramsDiv: '#params_import_ftn_data',
+                usesYears: true, yearsRequired: true, yearsPlaceholder: "e.g., 2022,2023",
+                usesColumns: true, colsPlaceholder: "e.g., column_name (optional)",
+                usesColumnSuggest: true,
+                paramsInfo: {
+                    'ftn_downcast': {label: "Downcast Floats", type: 'checkbox', default: true, tooltip: "Convert float64 to float32 to save memory."},
+                    'ftn_thread_requests': {label: "Thread Requests", type: 'checkbox', default: false, tooltip: "Use multiple threads to download data."}
+                }
+            },
+            'import_depth_charts': {
+                description: "Imports team depth charts (2001 onwards). Years (e.g., 2023) are required.",
+                paramsDiv: null,
+                usesYears: true, yearsRequired: true, yearsPlaceholder: "e.g., 2023 or 2020,2021",
+                usesColumns: false,
+                usesColumnSuggest: true
+            },
+            'import_injuries': {
+                description: "Imports team injury reports (2009 onwards). Years (e.g., 2023) are required.",
+                paramsDiv: null,
+                usesYears: true, yearsRequired: true, yearsPlaceholder: "e.g., 2023 or 2020,2021",
+                usesColumns: false,
+                usesColumnSuggest: true
+            },
+            'import_schedules': {
+                description: "Imports weekly team schedules. Years (e.g., 2023) are required.",
+                paramsDiv: null,
+                usesYears: true, yearsRequired: true, yearsPlaceholder: "e.g., 2023 or 2020,2021",
+                usesColumns: false,
+                usesColumnSuggest: true
+            },
+            'import_officials': {
+                description: "Imports details on game officials. Years are optional filters.",
+                paramsDiv: null,
+                usesYears: true, yearsRequired: false, yearsPlaceholder: "e.g., 2023 (optional filter)",
+                usesColumns: false,
+                usesColumnSuggest: true
+            },
+            'import_win_totals': {
+                description: "Imports win total lines for teams. Years are optional filters.",
+                paramsDiv: null,
+                usesYears: true, yearsRequired: false, yearsPlaceholder: "e.g., 2023 (optional filter)",
+                usesColumns: false,
+                usesColumnSuggest: true
+            },
+            'import_sc_lines': {
+                description: "Imports weekly betting lines for teams. Years are optional filters.",
+                paramsDiv: null,
+                usesYears: true, yearsRequired: false, yearsPlaceholder: "e.g., 2023 (optional filter)",
+                usesColumns: false,
+                usesColumnSuggest: true
+            },
+            'import_draft_values': {
+                description: "Imports draft value models by pick. No specific parameters usually needed for base data.",
+                paramsDiv: null, usesYears: false, usesColumns: false, usesColumnSuggest: true
+            },
+            'import_team_desc': {
+                description: "Imports descriptive data for team visualizations. No year/column inputs needed.",
+                paramsDiv: null, usesYears: false, usesColumns: false, usesColumnSuggest: true
+            },
+            'import_contracts': {
+                description: "Imports historical contract data. No year/column inputs needed.",
+                paramsDiv: null, usesYears: false, usesColumns: false, usesColumnSuggest: true
+            },
+            'import_ids': {
+                description: "Imports mapping of player ids. 'Columns' can specify which ID types to return (e.g., gsis_id, espn_id). 'Player IDs to return' filters for specific player ID values.",
+                paramsDiv: '#params_import_ids',
+                usesYears: false,
+                usesColumns: true, colsPlaceholder: "ID types: e.g., gsis_id, espn_id (optional)",
+                usesColumnSuggest: true,
+                paramsInfo: {
+                     'ids_ids': {label: "Player IDs to return (subset, comma-separated, optional):", type: 'text', placeholder: "e.g., 00-0033873,00-0026498", tooltip: "Filter by specific player IDs."}
+                }
+            },
+            'import_players': {
+                description: "Imports descriptive data for all players. No year/column inputs needed.",
+                paramsDiv: null, usesYears: false, usesColumns: false, usesColumnSuggest: true
+            }
         };
+
+        // Add a div for function description and parameter details
+        $('#function_name').after(`
+            <div id="functionDescription" style="margin-top:5px; margin-bottom:5px; font-style:italic; color:#666; border-left: 3px solid #007bff; padding-left: 10px; min-height: 1.2em;"></div>
+            <div id="parameterDetails" style="margin-top:5px; margin-bottom:10px; font-size:0.9em; color:#444;"></div>
+        `);
+
 
         $('#function_name').change(function() {
             const selectedFunction = $(this).val();
+            $('#functionDescription').text('');
+            $('#parameterDetails').empty();
             $('.options-group').addClass('hidden');
             $('#common_params').addClass('hidden');
             $('#availableColumns').html('');
@@ -419,6 +598,7 @@
                         initialFetchedDataJson = response.data;
                         currentlyDisplayedDataJson = response.data; // Initially, displayed data is the fetched data
                         currentlyDisplayedColumns = response.columns || [];
+                        currentColumnDataTypes = response.dtypes || {}; // STORE DTYPES
                         const dfObject = JSON.parse(currentlyDisplayedDataJson);
 
                         const tableHead = $('#dataTable thead');
@@ -481,24 +661,50 @@
             const $operatorSelect = $('#filterOperator');
             $operatorSelect.empty();
 
-            // Simplified: Assume numeric if common numeric keywords in name, else string.
-            // A more robust solution would get actual dtypes from backend or first few rows.
-            const isLikelyNumeric = selectedColumn && (selectedColumn.toLowerCase().includes('yard') || selectedColumn.toLowerCase().includes('td') || selectedColumn.toLowerCase().includes('id') || selectedColumn.toLowerCase().includes('value') || selectedColumn.toLowerCase().includes('sh') || selectedColumn.toLowerCase().includes('epa'));
+            if (!selectedColumn || !currentColumnDataTypes[selectedColumn]) {
+                // Add a default placeholder or clear if no column selected or type unknown
+                $operatorSelect.append($('<option>', { value: '', text: 'Select column first' }));
+                return;
+            }
 
-            if (isLikelyNumeric) {
-                $operatorSelect.append($('<option>', { value: '==', text: '==' }));
-                $operatorSelect.append($('<option>', { value: '!=', text: '!=' }));
-                $operatorSelect.append($('<option>', { value: '>', text: '>' }));
-                $operatorSelect.append($('<option>', { value: '<', text: '<' }));
-                $operatorSelect.append($('<option>', { value: '>=', text: '>=' }));
-                $operatorSelect.append($('<option>', { value: '<=', text: '<=' }));
-            } else { // Assume string/categorical
-                $operatorSelect.append($('<option>', { value: 'equals', text: 'Equals' }));
-                $operatorSelect.append($('<option>', { value: 'contains', text: 'Contains' }));
-                $operatorSelect.append($('<option>', { value: 'startswith', text: 'Starts With' }));
-                $operatorSelect.append($('<option>', { value: 'endswith', text: 'Ends With' }));
-                $operatorSelect.append($('<option>', { value: 'not_equals', text: 'Not Equals' }));
-                $operatorSelect.append($('<option>', { value: 'not_contains', text: 'Not Contains' }));
+            const dtype = currentColumnDataTypes[selectedColumn].toLowerCase();
+            let operators = {};
+
+            // Define operators by type category
+            const numericOperators = {
+                '==': '==', '!=': '!=', '>': '>', '<': '<', '>=': '>=', '<=': '<='
+            };
+            const stringOperators = {
+                'equals': 'Equals', 'not_equals': 'Not Equals',
+                'contains': 'Contains', 'not_contains': 'Not Contains',
+                'startswith': 'Starts With', 'endswith': 'Ends With',
+                'is_null': 'Is Null', 'is_not_null': 'Is Not Null'
+            };
+            const booleanOperators = {
+                'is_true': 'Is True', 'is_false': 'Is False',
+                'is_null': 'Is Null', 'is_not_null': 'Is Not Null'
+            };
+            const generalOperators = { // For unknown or mixed types, or as a fallback
+                'is_null': 'Is Null', 'is_not_null': 'Is Not Null'
+            };
+
+            if (dtype.includes('int') || dtype.includes('float') || dtype.includes('number')) {
+                operators = {...numericOperators, ...generalOperators};
+            } else if (dtype.includes('bool')) {
+                operators = booleanOperators; // Boolean operators are specific
+            } else if (dtype.includes('object') || dtype.includes('string') || dtype.includes('category')) {
+                operators = {...stringOperators, ...generalOperators};
+            } else { // Fallback for other types (datetime, timedelta, etc.)
+                operators = generalOperators;
+                 $operatorSelect.append($('<option>', { value: 'equals', text: 'Equals (exact match)' }));
+                 $operatorSelect.append($('<option>', { value: 'not_equals', text: 'Not Equals (exact match)' }));
+            }
+
+            // For boolean types, the value input might not be needed for 'is_true'/'is_false'
+            // This can be handled by hiding/showing #filterValue based on operator
+
+            for (const opValue in operators) {
+                $operatorSelect.append($('<option>', { value: opValue, text: operators[opValue] }));
             }
         }
 
@@ -571,6 +777,7 @@
                     if (response.data) {
                         currentlyDisplayedDataJson = response.data; // Update with processed data
                         currentlyDisplayedColumns = response.columns || [];
+                        currentColumnDataTypes = response.dtypes || {}; // STORE DTYPES
                         const dfObject = JSON.parse(currentlyDisplayedDataJson);
 
                         // Update table
