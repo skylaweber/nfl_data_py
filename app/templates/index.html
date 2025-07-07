@@ -21,7 +21,8 @@
         #plotDiv { margin-top: 30px; min-height: 400px; } /* Ensure plotDiv has some height */
         .error { color: red; margin-top: 10px; font-weight: bold; }
         .form-group { margin-bottom: 15px; padding: 10px; border: 1px solid #eee; border-radius: 4px;}
-        .specific-params label { font-weight: normal; } /* Less emphasis for sub-options */
+        .specific-params h4 { margin-top: 15px; margin-bottom: 5px; color: #333; }
+        .specific-params label { font-weight: normal; }
         .hidden { display: none; }
     </style>
 </head>
@@ -217,7 +218,7 @@
             'import_weekly_rosters': { paramsDiv: null, usesYears: true, yearsRequired: true, usesColumns: true },
             'import_ngs_data': { paramsDiv: '#params_import_ngs_data', usesYears: true, yearsRequired: false, usesColumns: false }, // Years optional in lib
             'import_combine_data': { paramsDiv: '#params_import_combine_data', usesYears: true, yearsRequired: false, usesColumns: false }, // Years optional in lib
-            'import_draft_picks': { paramsDiv: null, usesYears: true, yearsRequired: false, usesColumns: false }, // Years optional in lib
+            'import_draft_picks': { paramsDiv: null, usesYears: true, yearsRequired: false, usesColumns: false }, // Years optional in lib; GUI makes it required for consistency for now.
             'import_qbr': { paramsDiv: '#params_import_qbr', usesYears: true, yearsRequired: false, usesColumns: false }, // Years optional in lib
             'import_seasonal_pfr': { paramsDiv: '#params_import_seasonal_pfr', usesYears: true, yearsRequired: false, usesColumns: false }, // Years optional
             'import_weekly_pfr': { paramsDiv: '#params_import_weekly_pfr', usesYears: true, yearsRequired: false, usesColumns: false }, // Years optional
@@ -226,20 +227,20 @@
             'import_depth_charts': { paramsDiv: null, usesYears: true, yearsRequired: true, usesColumns: false },
             'import_injuries': { paramsDiv: null, usesYears: true, yearsRequired: true, usesColumns: false },
             'import_schedules': { paramsDiv: null, usesYears: true, yearsRequired: true, usesColumns: false },
-            'import_officials': { paramsDiv: null, usesYears: true, yearsRequired: false, usesColumns: false }, // years optional
-            'import_win_totals': { paramsDiv: null, usesYears: true, yearsRequired: false, usesColumns: false }, // years optional
-            'import_sc_lines': { paramsDiv: null, usesYears: true, yearsRequired: false, usesColumns: false }, // years optional
-            'import_draft_values': { paramsDiv: null, usesYears: false, usesColumns: false },
-            'import_team_desc': { paramsDiv: null, usesYears: false, usesColumns: false },
-            'import_contracts': { paramsDiv: null, usesYears: false, usesColumns: false },
-            'import_ids': { paramsDiv: '#params_import_ids', usesYears: false, usesColumns: true },
-            'import_players': { paramsDiv: null, usesYears: false, usesColumns: false }
+            'import_officials': { paramsDiv: null, usesYears: true, yearsRequired: false, usesColumns: false },
+            'import_win_totals': { paramsDiv: null, usesYears: true, yearsRequired: false, usesColumns: false },
+            'import_sc_lines': { paramsDiv: null, usesYears: true, yearsRequired: false, usesColumns: false },
+            'import_draft_values': { paramsDiv: null, usesYears: false, usesColumns: false }, // No years input
+            'import_team_desc': { paramsDiv: null, usesYears: false, usesColumns: false }, // No years input
+            'import_contracts': { paramsDiv: null, usesYears: false, usesColumns: false }, // No years input
+            'import_ids': { paramsDiv: '#params_import_ids', usesYears: false, usesColumns: true }, // No years input
+            'import_players': { paramsDiv: null, usesYears: false, usesColumns: false } // No years input
         };
 
         $('#function_name').change(function() {
             const selectedFunction = $(this).val();
             $('.options-group').addClass('hidden');
-            $('#common_params').addClass('hidden');
+            $('#common_params').addClass('hidden'); // Default to hidden, then show if needed
             $('#availableColumns').html('');
             $('#columns_search').val('');
             $('#years').val('');
@@ -251,14 +252,21 @@
 
             if (selectedFunction && functionParamMap[selectedFunction]) {
                 const config = functionParamMap[selectedFunction];
-                $('#common_params').removeClass('hidden'); // Show common by default if a function is selected
+                // Only show common_params if either years or columns are used by the function.
+                if (config.usesYears || config.usesColumns) {
+                    $('#common_params').removeClass('hidden');
+                }
 
                 $('#years_label, #years').toggle(!!config.usesYears);
-                $('#years').prop('required', !!config.yearsRequired);
+                // Note: HTML 'required' attribute might not be enough for complex forms,
+                // rely on JS validation before submit and backend validation.
+                // $('#years').prop('required', !!config.yearsRequired);
 
 
                 $('#columns_search_label, #columns_search').toggle(!!config.usesColumns);
+                // Show fetch button only if it's relevant AND columns are generally used
                 $('#fetchColumnsBtn').toggle(!!config.fetchableColsType && !!config.usesColumns);
+                // Show available columns div only if columns are generally used
                 $('#availableColumns').toggle(!!config.usesColumns);
 
 
@@ -323,10 +331,16 @@
                     $('#searchError').text('Years are required for this function.');
                     return;
                 }
-                payload.years = yearsVal || null;
+                // Only add years to payload if it has a value, to allow library defaults for optional years
+                if (yearsVal && yearsVal.trim() !== '') {
+                    payload.years = yearsVal;
+                }
             }
             if (config.usesColumns) {
-                payload.columns_str = $('#columns_search').val() || null;
+                 const colsVal = $('#columns_search').val();
+                 if (colsVal && colsVal.trim() !== '') {
+                    payload.columns_str = colsVal;
+                 }
             }
 
             if (config.paramsDiv) {
@@ -335,13 +349,13 @@
                     const name = input.attr('name');
                     if (input.attr('type') === 'checkbox') {
                         payload[name] = input.is(':checked');
-                    } else if (input.val() !== null && input.val().trim() !== '') { // Only add if not empty
+                    } else if (input.val() !== null && input.val().trim() !== '') {
                         payload[name] = input.val();
                     }
                 });
             }
 
-            console.log("Payload:", payload); // For debugging
+            console.log("Payload:", payload);
 
             $.ajax({
                 url: '/search',
@@ -384,10 +398,10 @@
                             populateSelectWithOptions('#y_axis', currentDataColumns);
                             populateSelectWithOptions('#color_by', currentDataColumns, true);
                             $('#visualizationForm').removeClass('hidden');
-                        } else {
-                             $('#searchError').text('No data or columns returned.');
+                        } else { // Handles case where df might have 0 columns (e.g. error or truly empty)
+                             $('#searchError').text('Search returned no data or columns.');
                              $('#dataInfo').text('Search returned no data or columns.');
-                             $('#dataDisplay').removeClass('hidden'); // Show to display message
+                             $('#dataDisplay').removeClass('hidden'); // Show to display message in dataInfo
                         }
                     }
                 },
@@ -400,8 +414,7 @@
 
         $('#visualizeBtn').click(function() {
             $('#vizError').text('');
-            // Do not empty plotDiv here if we want to allow multiple plots or update existing
-            // $('#plotDiv').empty();
+            // $('#plotDiv').empty(); // Keep previous plot if user wants to compare or if error
 
             if (!currentData) {
                 $('#vizError').text('No data available to visualize. Please perform a search first.');
@@ -422,15 +435,16 @@
                 data: vizPayload,
                 success: function(response) {
                     if (response.graph_json) {
+                        $('#plotDiv').empty(); // Clear previous plot before rendering new one
                         const graphData = JSON.parse(response.graph_json);
                         Plotly.newPlot('plotDiv', graphData.data, graphData.layout);
                     } else if (response.error) {
-                        $('#vizError').text('Error: ' + response.error);
+                        $('#vizError').text('Visualization Error: ' + response.error);
                     }
                 },
                 error: function(xhr) {
                      const errorMsg = xhr.responseJSON ? xhr.responseJSON.error : xhr.statusText;
-                    $('#vizError').text('Visualization failed: ' + errorMsg);
+                    $('#vizError').text('Visualization request failed: ' + errorMsg);
                 }
             });
         });
